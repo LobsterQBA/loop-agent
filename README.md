@@ -45,6 +45,20 @@ Then restart the server and ask:
 
 The answer survives because `.agent-mini/state.db` is the source of truth.
 
+## Local API contract
+
+The cockpit calls a local JSON API, which is also useful when trying the agent from a script:
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/run \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Calculate 8 * 9","mode":"demo"}'
+```
+
+`message` must be a non-empty string of at most 4,000 characters. Invalid requests return
+HTTP 400 before an agent turn, model call, or trace entry is created. The only supported modes
+are `demo` and `live`; `live` additionally requires `AGENT_API_KEY` and `AGENT_MODEL`.
+
 ## The four pieces
 
 ```mermaid
