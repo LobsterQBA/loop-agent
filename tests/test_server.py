@@ -63,3 +63,30 @@ def test_live_mode_requires_configuration(tmp_path, monkeypatch):
         server.shutdown()
         server.server_close()
         thread.join(timeout=3)
+
+
+def test_run_rejects_empty_non_string_and_oversized_messages(tmp_path):
+    server = create_server(port=0, home=tmp_path / "agent-home")
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        for message, expected in [
+            ("   ", "message must not be empty"),
+            (["not", "a", "string"], "message must be a string"),
+            ("x" * 4_001, "message must be at most 4000 characters"),
+        ]:
+            try:
+                request_json(
+                    f"{base}/api/run",
+                    payload={"message": message, "mode": "demo"},
+                )
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 400
+                assert expected in json.loads(exc.read())["error"]
+            else:
+                raise AssertionError("invalid message should return HTTP 400")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)

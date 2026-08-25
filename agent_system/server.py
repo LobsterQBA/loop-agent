@@ -20,6 +20,7 @@ from agent_system.tools import build_tools
 
 STATIC_ROOT = Path(__file__).parent / "static"
 MAX_BODY_BYTES = 16_384
+MAX_MESSAGE_CHARS = 4_000
 
 
 def load_dotenv(path: Path = Path(".env")) -> None:
@@ -68,6 +69,11 @@ class Application:
     def run(self, message: str, mode: str) -> dict:
         if mode not in {"demo", "live"}:
             raise ValueError("mode must be demo or live")
+        message = message.strip()
+        if not message:
+            raise ValueError("message must not be empty")
+        if len(message) > MAX_MESSAGE_CHARS:
+            raise ValueError(f"message must be at most {MAX_MESSAGE_CHARS} characters")
         agent = self.demo if mode == "demo" else self.live()
         return agent.run(message).to_dict()
 
@@ -155,7 +161,9 @@ class AgentHandler(BaseHTTPRequestHandler):
             return
         try:
             payload = self._read_json()
-            message = str(payload.get("message", ""))
+            message = payload.get("message", "")
+            if not isinstance(message, str):
+                raise TypeError("message must be a string")
             mode = str(payload.get("mode", "demo"))
             self._json(self.app.run(message, mode))
         except (TypeError, ValueError) as exc:
