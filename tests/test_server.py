@@ -26,6 +26,7 @@ def test_local_api_runs_a_demo_turn(tmp_path):
         status, system = request_json(f"{base}/api/status")
         assert status == 200
         assert system["tools"] == ["calculate", "current_time", "remember", "recall"]
+        assert system["limits"] == {"max_message_chars": 4_000}
 
         status, turn = request_json(
             f"{base}/api/run",

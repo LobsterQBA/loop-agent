@@ -84,6 +84,7 @@ class Application:
             "live_configured": self.live_configured,
             "database": str(self.memory.path),
             "tools": self.tools.names(),
+            "limits": {"max_message_chars": MAX_MESSAGE_CHARS},
         }
 
 
