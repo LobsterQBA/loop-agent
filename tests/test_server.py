@@ -91,3 +91,29 @@ def test_run_rejects_empty_non_string_and_oversized_messages(tmp_path):
         server.shutdown()
         server.server_close()
         thread.join(timeout=3)
+
+
+def test_run_requires_json_content_type(tmp_path):
+    server = create_server(port=0, home=tmp_path / "agent-home")
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    request = urllib.request.Request(
+        f"{base}/api/run",
+        data=json.dumps({"message": "hello"}).encode(),
+        headers={"Content-Type": "text/plain"},
+    )
+    try:
+        try:
+            urllib.request.urlopen(request, timeout=3)
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 415
+            assert json.loads(exc.read()) == {
+                "error": "Content-Type must be application/json"
+            }
+        else:
+            raise AssertionError("non-JSON content type should return HTTP 415")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)

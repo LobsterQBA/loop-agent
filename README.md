@@ -47,7 +47,7 @@ The answer survives because `.agent-mini/state.db` is the source of truth.
 
 ## Local API contract
 
-The cockpit calls a local JSON API, which is also useful when trying the agent from a script:
+The cockpit calls a local JSON API, which is also useful when trying the agent from a script. Requests must use `Content-Type: application/json`; other media types receive HTTP 415.
 
 ```bash
 curl -X POST http://127.0.0.1:8787/api/run \

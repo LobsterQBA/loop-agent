@@ -160,6 +160,16 @@ class AgentHandler(BaseHTTPRequestHandler):
         if urlparse(self.path).path != "/api/run":
             self._json({"error": "not found"}, HTTPStatus.NOT_FOUND)
             return
+
+        content_type = self.headers.get("Content-Type", "")
+        media_type = content_type.split(";", 1)[0].strip().lower()
+        if media_type != "application/json":
+            self._json(
+                {"error": "Content-Type must be application/json"},
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+            )
+            return
+
         try:
             payload = self._read_json()
             message = payload.get("message", "")
