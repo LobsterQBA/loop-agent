@@ -1,6 +1,6 @@
 # Architecture notes
 
-Loop Ledger keeps each layer behind one small interface:
+Loop Agent keeps each layer behind one small interface:
 
 ```mermaid
 flowchart LR

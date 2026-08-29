@@ -1,12 +1,12 @@
-# Loop Ledger
+# Loop Agent
 
 **A small, readable agent system: loop + tools + memory + trace.**
 
-Loop Ledger is a from-scratch learning build for seeing what happens inside one agent
+Loop Agent is a from-scratch learning build for seeing what happens inside one agent
 turn. It is intentionally smaller than a framework and safer than a general-purpose
 computer-use agent. The default demo needs no API key.
 
-![Loop Ledger cockpit](docs/cockpit.png)
+![Loop Agent cockpit](docs/cockpit.png)
 
 ## Why this exists
 
@@ -28,8 +28,8 @@ scratch with a narrower scope and no copied source.
 Requires Python 3.11+.
 
 ```bash
-git clone https://github.com/LobsterQBA/loop-ledger.git
-cd loop-ledger
+git clone https://github.com/LobsterQBA/loop-agent.git
+cd loop-agent
 python -m agent_system
 ```
 
