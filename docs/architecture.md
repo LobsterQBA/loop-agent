@@ -1,6 +1,6 @@
 # Architecture notes
 
-Agent System Mini keeps each layer behind one small interface:
+Loop Ledger keeps each layer behind one small interface:
 
 ```mermaid
 flowchart LR

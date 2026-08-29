@@ -1,4 +1,4 @@
-"""Tiny local HTTP server for the Agent System Mini cockpit."""
+"""Tiny local HTTP server for the Loop Ledger cockpit."""
 
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ class Application:
 
     def status(self) -> dict:
         return {
-            "name": "Agent System Mini",
+            "name": "Loop Ledger",
             "version": "0.1.0",
             "live_configured": self.live_configured,
             "database": str(self.memory.path),
@@ -199,20 +199,20 @@ def create_server(*, host: str = "127.0.0.1", port: int = 8787, home: Path | Non
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the Agent System Mini cockpit")
+    parser = argparse.ArgumentParser(description="Run the Loop Ledger cockpit")
     parser.add_argument("--port", type=int, default=int(os.getenv("AGENT_PORT", "8787")))
     parser.add_argument("--open", action="store_true", help="Open the cockpit in your browser")
     args = parser.parse_args()
     server = create_server(port=args.port)
     url = f"http://127.0.0.1:{server.server_port}"
-    print(f"Agent System Mini is running at {url}")
+    print(f"Loop Ledger is running at {url}")
     print("Demo mode needs no API key. Press Ctrl+C to stop.")
     if args.open:
         threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nStopping Agent System Mini.")
+        print("\nStopping Loop Ledger.")
     finally:
         server.server_close()
 

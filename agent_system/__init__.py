@@ -1,4 +1,4 @@
-"""Agent System Mini: a readable loop, local tools, memory, and trace."""
+"""Loop Ledger: a readable loop, local tools, memory, and trace."""
 
 from agent_system.agent import AgentSystem, AgentTurn
 from agent_system.memory import MemoryStore

@@ -10,7 +10,7 @@ from agent_system.memory import MemoryStore
 from agent_system.models import Model
 from agent_system.tools import ToolRegistry
 
-SYSTEM_PROMPT = """You are Agent System Mini, a concise local assistant.
+SYSTEM_PROMPT = """You are Loop Ledger, a concise local assistant.
 Use tools when they are useful. Never claim a tool succeeded until you read its result.
 The available tools are deliberately local and safe: arithmetic, time, remember, and recall.
 When the task is complete, answer clearly and briefly."""

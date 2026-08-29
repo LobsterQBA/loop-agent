@@ -1,12 +1,12 @@
-# Agent System Mini
+# Loop Ledger
 
 **A small, readable agent system: loop + tools + memory + trace.**
 
-Agent System Mini is a from-scratch learning build for seeing what happens inside one agent
+Loop Ledger is a from-scratch learning build for seeing what happens inside one agent
 turn. It is intentionally smaller than a framework and safer than a general-purpose
 computer-use agent. The default demo needs no API key.
 
-![Agent System Mini cockpit](docs/cockpit.png)
+![Loop Ledger cockpit](docs/cockpit.png)
 
 ## Why this exists
 
@@ -28,8 +28,8 @@ scratch with a narrower scope and no copied source.
 Requires Python 3.11+.
 
 ```bash
-git clone https://github.com/LobsterQBA/agent-system-mini.git
-cd agent-system-mini
+git clone https://github.com/LobsterQBA/loop-ledger.git
+cd loop-ledger
 python -m agent_system
 ```
 

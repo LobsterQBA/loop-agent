@@ -1,5 +1,5 @@
 [project]
-name = "agent-system-mini"
+name = "loop-ledger"
 version = "0.1.0"
 description = "A small, readable agent system: loop, tools, memory, and trace."
 readme = "README.md"
@@ -13,7 +13,7 @@ live = ["openai>=1.50"]
 dev = ["pytest>=8.0", "ruff>=0.9"]
 
 [project.scripts]
-agent-mini = "agent_system.server:main"
+loop-ledger = "agent_system.server:main"
 
 [build-system]
 requires = ["hatchling"]
