@@ -1,4 +1,6 @@
-from agent_system.agent import AgentSystem
+import pytest
+
+from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem
 from agent_system.memory import MemoryStore
 from agent_system.models import DemoModel, ModelReply, ToolCall
 from agent_system.tools import build_tools
@@ -59,3 +61,10 @@ def test_empty_message_is_rejected(tmp_path):
         assert "must not be empty" in str(exc)
     else:
         raise AssertionError("empty message should be rejected")
+
+
+def test_agent_rejects_messages_beyond_the_public_limit(tmp_path):
+    agent = make_agent(tmp_path)
+
+    with pytest.raises(ValueError, match="at most 2000 characters"):
+        agent.run("x" * (MAX_USER_MESSAGE_CHARS + 1))

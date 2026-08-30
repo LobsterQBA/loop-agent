@@ -13,14 +13,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-from agent_system.agent import AgentSystem
+from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem
 from agent_system.memory import MemoryStore
 from agent_system.models import DemoModel, LiveModel
 from agent_system.tools import build_tools
 
 STATIC_ROOT = Path(__file__).parent / "static"
 MAX_BODY_BYTES = 16_384
-MAX_MESSAGE_CHARS = 4_000
+MAX_MESSAGE_CHARS = MAX_USER_MESSAGE_CHARS
 
 
 def load_dotenv(path: Path = Path(".env")) -> None:

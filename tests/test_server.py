@@ -26,7 +26,7 @@ def test_local_api_runs_a_demo_turn(tmp_path):
         status, system = request_json(f"{base}/api/status")
         assert status == 200
         assert system["tools"] == ["calculate", "current_time", "remember", "recall"]
-        assert system["limits"] == {"max_message_chars": 4_000}
+        assert system["limits"] == {"max_message_chars": 2_000}
 
         status, turn = request_json(
             f"{base}/api/run",
@@ -75,7 +75,7 @@ def test_run_rejects_empty_non_string_and_oversized_messages(tmp_path):
         for message, expected in [
             ("   ", "message must not be empty"),
             (["not", "a", "string"], "message must be a string"),
-            ("x" * 4_001, "message must be at most 4000 characters"),
+            ("x" * 2_001, "message must be at most 2000 characters"),
         ]:
             try:
                 request_json(

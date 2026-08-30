@@ -14,6 +14,7 @@ SYSTEM_PROMPT = """You are Loop Agent, a concise local assistant.
 Use tools when they are useful. Never claim a tool succeeded until you read its result.
 The available tools are deliberately local and safe: arithmetic, time, remember, and recall.
 When the task is complete, answer clearly and briefly."""
+MAX_USER_MESSAGE_CHARS = 2_000
 
 
 @dataclass(frozen=True)
@@ -50,8 +51,10 @@ class AgentSystem:
         user_message = " ".join(user_message.strip().split())
         if not user_message:
             raise ValueError("message must not be empty")
-        if len(user_message) > 2_000:
-            raise ValueError("message is too long")
+        if len(user_message) > MAX_USER_MESSAGE_CHARS:
+            raise ValueError(
+                f"message must be at most {MAX_USER_MESSAGE_CHARS} characters"
+            )
 
         started = time.perf_counter()
         trace: list[dict] = []
