@@ -117,7 +117,10 @@ class AgentHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _read_json(self) -> dict:
-        length = int(self.headers.get("Content-Length", "0"))
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as exc:
+            raise ValueError("invalid request size") from exc
         if length <= 0 or length > MAX_BODY_BYTES:
             raise ValueError("invalid request size")
         try:
