@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import json
+import math
 import operator
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from typing import Any
 from agent_system.memory import MemoryStore
 
 ToolFunction = Callable[..., Any]
+MAX_CALCULATION_RESULT = 1_000_000_000_000
 
 
 @dataclass(frozen=True)
@@ -94,14 +96,15 @@ def safe_calculate(expression: str) -> int | float:
             if isinstance(node.op, ast.Pow) and abs(right) > 12:
                 raise ValueError("exponent is too large")
             result = _BINARY_OPERATORS[type(node.op)](left, right)
-            if abs(result) > 1_000_000_000_000:
-                raise ValueError("result is too large")
             return result
         if isinstance(node, ast.UnaryOp) and type(node.op) in _UNARY_OPERATORS:
             return _UNARY_OPERATORS[type(node.op)](visit(node.operand))
         raise ValueError("only basic arithmetic is allowed")
 
-    return visit(tree)
+    result = visit(tree)
+    if not math.isfinite(result) or abs(result) > MAX_CALCULATION_RESULT:
+        raise ValueError("result is too large")
+    return result
 
 
 def build_tools(memory: MemoryStore) -> ToolRegistry:

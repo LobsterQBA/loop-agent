@@ -20,6 +20,12 @@ def test_calculator_rejects_unsafe_or_unbounded_input(expression):
         safe_calculate(expression)
 
 
+@pytest.mark.parametrize("expression", ["1000000000001", "1e309"])
+def test_calculator_rejects_out_of_range_numeric_literals(expression):
+    with pytest.raises(ValueError, match="result is too large"):
+        safe_calculate(expression)
+
+
 def test_tool_registry_surfaces_errors_as_data(tmp_path):
     registry = build_tools(MemoryStore(tmp_path / "state.db"))
     output = json.loads(registry.execute("calculate", {"expression": "1 / 0"}))
