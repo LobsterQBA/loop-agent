@@ -32,6 +32,11 @@ CREATE TABLE IF NOT EXISTS turns (
 """
 
 
+def _literal_like_pattern(value: str) -> str:
+    escaped = value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 class MemoryStore:
     """Durable local facts plus an inspectable ledger of agent turns."""
 
@@ -68,10 +73,10 @@ class MemoryStore:
         query = " ".join(query.strip().split())[:80]
         with self._connect() as conn:
             if query:
-                needle = f"%{query}%"
+                needle = _literal_like_pattern(query)
                 rows = conn.execute(
                     """SELECT key, value, updated_at FROM memories
-                    WHERE key LIKE ? OR value LIKE ?
+                    WHERE key LIKE ? ESCAPE '\\' OR value LIKE ? ESCAPE '\\'
                     ORDER BY updated_at DESC, id DESC LIMIT ?""",
                     (needle, needle, limit),
                 ).fetchall()

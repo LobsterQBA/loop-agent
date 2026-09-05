@@ -38,3 +38,15 @@ def test_memory_is_durable(tmp_path):
     MemoryStore(path).remember("launch score", "391")
     reopened = MemoryStore(path)
     assert reopened.recall("launch")[0]["value"] == "391"
+
+
+@pytest.mark.parametrize(
+    ("query", "matching_key"),
+    [("%", "conversion %"), ("_", "feature_name")],
+)
+def test_memory_search_treats_like_metacharacters_literally(tmp_path, query, matching_key):
+    memory = MemoryStore(tmp_path / "state.db")
+    memory.remember("ordinary note", "no special characters")
+    memory.remember(matching_key, "matched")
+
+    assert [item["key"] for item in memory.recall(query)] == [matching_key]
