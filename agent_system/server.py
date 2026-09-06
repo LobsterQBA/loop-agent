@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+from agent_system import __version__
 from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem
 from agent_system.memory import MemoryStore
 from agent_system.models import DemoModel, LiveModel
@@ -80,7 +81,7 @@ class Application:
     def status(self) -> dict:
         return {
             "name": "Loop Agent",
-            "version": "0.1.0",
+            "version": __version__,
             "live_configured": self.live_configured,
             "database": str(self.memory.path),
             "tools": self.tools.names(),

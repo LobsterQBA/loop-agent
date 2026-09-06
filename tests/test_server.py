@@ -2,6 +2,7 @@ import json
 import threading
 import urllib.error
 import urllib.request
+from importlib.metadata import version
 
 from agent_system.server import create_server
 
@@ -25,6 +26,7 @@ def test_local_api_runs_a_demo_turn(tmp_path):
     try:
         status, system = request_json(f"{base}/api/status")
         assert status == 200
+        assert system["version"] == version("loop-agent")
         assert system["tools"] == ["calculate", "current_time", "remember", "recall"]
         assert system["limits"] == {"max_message_chars": 2_000}
 
