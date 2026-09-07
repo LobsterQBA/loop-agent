@@ -20,7 +20,7 @@ def test_calculator_rejects_unsafe_or_unbounded_input(expression):
         safe_calculate(expression)
 
 
-@pytest.mark.parametrize("expression", ["1000000000001", "1e309"])
+@pytest.mark.parametrize("expression", ["1000000000001", "1e309", "9" * 90])
 def test_calculator_rejects_out_of_range_numeric_literals(expression):
     with pytest.raises(ValueError, match="result is too large"):
         safe_calculate(expression)

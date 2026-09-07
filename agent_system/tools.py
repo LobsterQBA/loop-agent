@@ -102,7 +102,7 @@ def safe_calculate(expression: str) -> int | float:
         raise ValueError("only basic arithmetic is allowed")
 
     result = visit(tree)
-    if not math.isfinite(result) or abs(result) > MAX_CALCULATION_RESULT:
+    if abs(result) > MAX_CALCULATION_RESULT or not math.isfinite(result):
         raise ValueError("result is too large")
     return result
 
