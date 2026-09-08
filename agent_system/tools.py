@@ -102,6 +102,8 @@ def safe_calculate(expression: str) -> int | float:
         raise ValueError("only basic arithmetic is allowed")
 
     result = visit(tree)
+    if type(result) not in (int, float):
+        raise ValueError("result must be a real number")
     if abs(result) > MAX_CALCULATION_RESULT or not math.isfinite(result):
         raise ValueError("result is too large")
     return result

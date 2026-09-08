@@ -26,6 +26,11 @@ def test_calculator_rejects_out_of_range_numeric_literals(expression):
         safe_calculate(expression)
 
 
+def test_calculator_rejects_complex_results():
+    with pytest.raises(ValueError, match="result must be a real number"):
+        safe_calculate("(-1) ** 0.5")
+
+
 def test_tool_registry_surfaces_errors_as_data(tmp_path):
     registry = build_tools(MemoryStore(tmp_path / "state.db"))
     output = json.loads(registry.execute("calculate", {"expression": "1 / 0"}))
