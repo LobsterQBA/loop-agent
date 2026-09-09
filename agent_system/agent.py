@@ -81,7 +81,7 @@ class AgentSystem:
         iterations = 0
         for iteration in range(1, self.max_iterations + 1):
             iterations = iteration
-            emit("reason", f"Reason · iteration {iteration}", {"model": self.model.name})
+            emit("reason", f"Model call · iteration {iteration}", {"model": self.model.name})
             model_reply = self.model.complete(messages, self.tools.schemas())
 
             if not model_reply.tool_calls:

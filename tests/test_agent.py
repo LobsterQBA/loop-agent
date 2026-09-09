@@ -22,6 +22,7 @@ def test_demo_agent_chains_calculate_and_remember(tmp_path):
 
     assert turn.tool_calls == 2
     assert turn.iterations == 3
+    assert "Saved “launch score” = 391." in turn.reply
     assert agent.memory.recall("launch score")[0]["value"] == "391"
     assert [event["kind"] for event in turn.trace].count("tool") == 2
     assert turn.trace[-1]["kind"] == "done"
@@ -68,3 +69,21 @@ def test_agent_rejects_messages_beyond_the_public_limit(tmp_path):
 
     with pytest.raises(ValueError, match="at most 2000 characters"):
         agent.run("x" * (MAX_USER_MESSAGE_CHARS + 1))
+
+
+@pytest.mark.parametrize("prior_value", [None, "valid previous result"])
+def test_failed_calculation_does_not_write_memory(tmp_path, prior_value):
+    agent = make_agent(tmp_path)
+    if prior_value is not None:
+        agent.memory.remember("invalid score", prior_value)
+    before = agent.memory.recall()
+
+    turn = agent.run("Calculate 1 / 0 and remember the result as invalid score.")
+
+    assert turn.tool_calls == 1
+    assert "did not save" in turn.reply
+    assert agent.memory.recall() == before
+    observations = [event["detail"] for event in turn.trace if event["kind"] == "observe"]
+    assert observations[0]["ok"] is False
+    assert "ZeroDivisionError" in observations[0]["error"]
+    assert agent.memory.recent_turns()[0]["reply"] == turn.reply

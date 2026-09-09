@@ -93,7 +93,12 @@ class DemoModel:
         if wants_memory and "remember" not in results:
             if "calculate" in results:
                 calculated = results["calculate"][-1]
-                value = str(calculated.get("result", calculated.get("error", "unknown")))
+                if not calculated.get("ok"):
+                    return ModelReply(
+                        text=f"Calculation failed: {calculated.get('error')}. "
+                        "I did not save a result."
+                    )
+                value = str(calculated["result"])
             else:
                 value = re.sub(
                     r"^(please\s+)?(remember|save)(\s+that)?\s+",
@@ -117,13 +122,22 @@ class DemoModel:
             summaries = []
             for tool_name, entries in results.items():
                 latest = entries[-1]
-                if latest.get("ok"):
-                    summaries.append(f"{tool_name} → {latest.get('result')}")
+                if not latest.get("ok"):
+                    summaries.append(f"{tool_name} failed: {latest.get('error')}.")
+                    continue
+                result = latest.get("result")
+                if tool_name == "calculate":
+                    summaries.append(f"{expression} = {result}.")
+                elif tool_name == "remember":
+                    summaries.append(f"Saved “{result['key']}” = {result['value']}.")
+                elif tool_name == "recall":
+                    summaries.append(
+                        "Found: " + "; ".join(f"{item['key']} = {item['value']}" for item in result)
+                        if result else "No matching memories found."
+                    )
                 else:
-                    summaries.append(f"{tool_name} failed → {latest.get('error')}")
-            return ModelReply(
-                text="Done. I used the local tools and observed: " + " · ".join(summaries)
-            )
+                    summaries.append(f"Local time: {result}.")
+            return ModelReply(text=" ".join(summaries))
 
         return ModelReply(
             text=(
