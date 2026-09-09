@@ -1,3 +1,6 @@
+import json
+import sqlite3
+
 import pytest
 
 from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem
@@ -44,6 +47,17 @@ class EndlessModel:
         return ModelReply(tool_calls=[ToolCall("loop", "current_time", {})])
 
 
+class FailingAfterWriteModel:
+    name = "failing-after-write"
+
+    def complete(self, messages, tools):
+        if not any(message.get("role") == "tool" for message in messages):
+            return ModelReply(
+                tool_calls=[ToolCall("write", "remember", {"key": "partial", "value": "saved"})]
+            )
+        raise RuntimeError("provider disconnected")
+
+
 def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     agent = make_agent(tmp_path, model=EndlessModel(), max_iterations=2)
     turn = agent.run("keep going")
@@ -52,6 +66,24 @@ def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     assert turn.tool_calls == 2
     assert "iteration limit" in turn.reply.lower()
     assert any(event["kind"] == "guardrail" for event in turn.trace)
+
+
+def test_failed_turn_is_persisted_with_partial_tool_effects(tmp_path):
+    agent = make_agent(tmp_path, model=FailingAfterWriteModel())
+
+    with pytest.raises(RuntimeError, match="provider disconnected"):
+        agent.run("remember this before failing")
+
+    assert agent.memory.recall("partial")[0]["value"] == "saved"
+    failed_turn = agent.memory.recent_turns()[0]
+    assert failed_turn["status"] == "failed"
+    assert failed_turn["reply"] == ""
+    assert failed_turn["iterations"] == 2
+    assert failed_turn["error"] == "RuntimeError: provider disconnected"
+    with sqlite3.connect(agent.memory.path) as conn:
+        trace = json.loads(conn.execute("SELECT trace_json FROM turns").fetchone()[0])
+    assert [event["kind"] for event in trace][-2:] == ["reason", "error"]
+    assert any(event["kind"] == "observe" for event in trace)
 
 
 def test_empty_message_is_rejected(tmp_path):

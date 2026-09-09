@@ -27,9 +27,16 @@ CREATE TABLE IF NOT EXISTS turns (
     mode TEXT NOT NULL,
     iterations INTEGER NOT NULL,
     trace_json TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'completed',
+    error TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 """
+
+TURN_COLUMNS = {
+    "status": "TEXT NOT NULL DEFAULT 'completed'",
+    "error": "TEXT",
+}
 
 
 def _literal_like_pattern(value: str) -> str:
@@ -45,6 +52,10 @@ class MemoryStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.executescript(SCHEMA)
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(turns)")}
+            for name, definition in TURN_COLUMNS.items():
+                if name not in columns:
+                    conn.execute(f"ALTER TABLE turns ADD COLUMN {name} {definition}")
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.path, timeout=3)
@@ -96,13 +107,25 @@ class MemoryStore:
         mode: str,
         iterations: int,
         trace: list[dict],
+        status: str = "completed",
+        error: str | None = None,
     ) -> int:
+        if status not in {"completed", "failed"}:
+            raise ValueError("status must be completed or failed")
         with self._connect() as conn:
             cursor = conn.execute(
                 """INSERT INTO turns
-                (user_message, reply, mode, iterations, trace_json)
-                VALUES (?, ?, ?, ?, ?)""",
-                (user_message, reply, mode, iterations, json.dumps(trace, ensure_ascii=False)),
+                (user_message, reply, mode, iterations, trace_json, status, error)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    user_message,
+                    reply,
+                    mode,
+                    iterations,
+                    json.dumps(trace, ensure_ascii=False),
+                    status,
+                    error,
+                ),
             )
             conn.commit()
             return int(cursor.lastrowid)
@@ -111,7 +134,7 @@ class MemoryStore:
         limit = max(1, min(int(limit), 50))
         with self._connect() as conn:
             rows = conn.execute(
-                """SELECT id, user_message, reply, mode, iterations, created_at
+                """SELECT id, user_message, reply, mode, iterations, status, error, created_at
                 FROM turns ORDER BY id DESC LIMIT ?""",
                 (limit,),
             ).fetchall()

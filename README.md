@@ -167,10 +167,11 @@ turns in fresh processes. It serves static assets and no API keys or visitor sta
 This is a local portfolio project, not a hosted service. There is no shell, browser, messaging,
 or arbitrary-file tool. The server binds to localhost; it has no authentication or multi-user isolation.
 Memory writes and the final trace are separate database transactions, so a failed turn can leave
-partial effects. A provider failure can happen before a trace is saved.
+partial effects. The failed turn and its trace are persisted to make those effects inspectable;
+a process crash can still interrupt before that record is written.
 
-The next engineering priority would be durable failure records and explicit turn status, followed
-by live-model evaluation against task-specific criteria. See [the tradeoffs](docs/architecture.md#tradeoffs-and-next-decisions).
+The next engineering priority would be transactional policies for partial tool effects, followed by
+live-model evaluation against task-specific criteria. See [the tradeoffs](docs/architecture.md#tradeoffs-and-next-decisions).
 
 Architecture inspiration: [Waku](https://github.com/ShenSeanChen/waku-agent). This repository was
 implemented from scratch with a smaller scope. [MIT license](LICENSE).

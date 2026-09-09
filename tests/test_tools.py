@@ -1,4 +1,5 @@
 import json
+import sqlite3
 
 import pytest
 
@@ -43,6 +44,31 @@ def test_memory_is_durable(tmp_path):
     MemoryStore(path).remember("launch score", "391")
     reopened = MemoryStore(path)
     assert reopened.recall("launch")[0]["value"] == "391"
+
+
+def test_memory_migrates_existing_turn_ledgers(tmp_path):
+    path = tmp_path / "state.db"
+    with sqlite3.connect(path) as conn:
+        conn.execute(
+            """CREATE TABLE turns (
+                id INTEGER PRIMARY KEY,
+                user_message TEXT NOT NULL,
+                reply TEXT NOT NULL,
+                mode TEXT NOT NULL,
+                iterations INTEGER NOT NULL,
+                trace_json TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )"""
+        )
+        conn.execute(
+            """INSERT INTO turns (user_message, reply, mode, iterations, trace_json)
+            VALUES ('hello', 'hi', 'demo', 1, '[]')"""
+        )
+
+    memory = MemoryStore(path)
+
+    assert memory.recent_turns()[0]["status"] == "completed"
+    assert memory.recent_turns()[0]["error"] is None
 
 
 @pytest.mark.parametrize(

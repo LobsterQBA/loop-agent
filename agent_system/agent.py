@@ -52,9 +52,7 @@ class AgentSystem:
         if not user_message:
             raise ValueError("message must not be empty")
         if len(user_message) > MAX_USER_MESSAGE_CHARS:
-            raise ValueError(
-                f"message must be at most {MAX_USER_MESSAGE_CHARS} characters"
-            )
+            raise ValueError(f"message must be at most {MAX_USER_MESSAGE_CHARS} characters")
 
         started = time.perf_counter()
         trace: list[dict] = []
@@ -79,52 +77,66 @@ class AgentSystem:
 
         reply = ""
         iterations = 0
-        for iteration in range(1, self.max_iterations + 1):
-            iterations = iteration
-            emit("reason", f"Model call · iteration {iteration}", {"model": self.model.name})
-            model_reply = self.model.complete(messages, self.tools.schemas())
+        try:
+            for iteration in range(1, self.max_iterations + 1):
+                iterations = iteration
+                emit("reason", f"Model call · iteration {iteration}", {"model": self.model.name})
+                model_reply = self.model.complete(messages, self.tools.schemas())
 
-            if not model_reply.tool_calls:
-                reply = model_reply.text.strip() or "The model returned an empty reply."
-                emit("reply", "Final reply", reply)
-                break
+                if not model_reply.tool_calls:
+                    reply = model_reply.text.strip() or "The model returned an empty reply."
+                    emit("reply", "Final reply", reply)
+                    break
 
-            assistant_calls = []
-            for call in model_reply.tool_calls:
-                assistant_calls.append(
-                    {
-                        "id": call.id,
-                        "type": "function",
-                        "function": {
-                            "name": call.name,
-                            "arguments": json.dumps(call.arguments, ensure_ascii=False),
-                        },
-                    }
-                )
-            messages.append(
-                {
-                    "role": "assistant",
-                    "content": model_reply.text or None,
-                    "tool_calls": assistant_calls,
-                }
-            )
-
-            for call in model_reply.tool_calls:
-                tool_call_count += 1
-                emit("tool", f"Tool call · {call.name}", call.arguments)
-                output = self.tools.execute(call.name, call.arguments)
-                emit("observe", f"Observe · {call.name}", json.loads(output))
+                assistant_calls = []
+                for call in model_reply.tool_calls:
+                    assistant_calls.append(
+                        {
+                            "id": call.id,
+                            "type": "function",
+                            "function": {
+                                "name": call.name,
+                                "arguments": json.dumps(call.arguments, ensure_ascii=False),
+                            },
+                        }
+                    )
                 messages.append(
                     {
-                        "role": "tool",
-                        "tool_call_id": call.id,
-                        "name": call.name,
-                        "content": output,
+                        "role": "assistant",
+                        "content": model_reply.text or None,
+                        "tool_calls": assistant_calls,
                     }
                 )
-        else:
-            reply = "I reached the iteration limit before completing the task."
-            emit("guardrail", "Iteration limit reached", {"limit": self.max_iterations})
+
+                for call in model_reply.tool_calls:
+                    tool_call_count += 1
+                    emit("tool", f"Tool call · {call.name}", call.arguments)
+                    output = self.tools.execute(call.name, call.arguments)
+                    emit("observe", f"Observe · {call.name}", json.loads(output))
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": call.id,
+                            "name": call.name,
+                            "content": output,
+                        }
+                    )
+            else:
+                reply = "I reached the iteration limit before completing the task."
+                emit("guardrail", "Iteration limit reached", {"limit": self.max_iterations})
+        except Exception as exc:
+            error = f"{type(exc).__name__}: {exc}"
+            emit("error", "Turn failed", {"error": error})
+            self.memory.record_turn(
+                user_message=user_message,
+                reply="",
+                mode=self.mode,
+                iterations=iterations,
+                trace=trace,
+                status="failed",
+                error=error,
+            )
+            raise
 
         emit(
             "done",
