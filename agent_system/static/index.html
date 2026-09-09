@@ -7,67 +7,76 @@
       name="description"
       content="A small, readable agent system with a visible loop, local tools, SQLite memory, and trace."
     />
-    <title>Loop Agent · The loop, in the open</title>
+    <title>Loop Agent · Inspect a turn</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <div class="grain" aria-hidden="true"></div>
     <header class="topbar">
       <a class="wordmark" href="#top" aria-label="Loop Agent home">
-        <span class="mark" aria-hidden="true">L↻</span>
-        <span>Loop<br />Agent</span>
+        <span class="mark" aria-hidden="true">↳</span>
+        <span>Loop Agent</span>
       </a>
       <div class="topbar-meta">
-        <span id="system-status" class="status-pill"><i></i> local · checking</span>
-        <span class="version">v0.1.0 / readable by design</span>
+        <span id="system-status" class="status-pill"
+          ><i></i> local · checking</span
+        >
+        <a class="source-link" href="https://github.com/LobsterQBA/loop-agent"
+          >Source on GitHub ↗</a
+        >
       </div>
     </header>
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <p class="eyebrow">ONE TURN. EVERY DECISION VISIBLE.</p>
-          <h1 id="hero-title">The agent loop,<br /><em>in the open.</em></h1>
-          <p class="lede">
-            A small agent system you can read before your coffee gets cold:
-            reason, call a tool, observe the result, repeat, remember.
-          </p>
-        </div>
+        <p class="eyebrow">A SMALL AGENT, OPEN TO INSPECTION</p>
+        <h1 id="hero-title">Follow an agent’s work.</h1>
+        <p class="lede">
+          Follow a task from instruction to tool calls to saved memory. Every
+          result has a record you can open.
+        </p>
+      </section>
 
-        <div class="architecture" aria-label="Agent architecture">
-          <article class="pillar active">
-            <span>01</span>
-            <strong>Loop</strong>
-            <small>reason → act → observe</small>
-          </article>
-          <article class="pillar">
-            <span>02</span>
-            <strong>Tools</strong>
-            <small>four safe local functions</small>
-          </article>
-          <article class="pillar">
-            <span>03</span>
-            <strong>Memory</strong>
-            <small>one inspectable SQLite file</small>
-          </article>
-          <article class="pillar">
-            <span>04</span>
-            <strong>Trace</strong>
-            <small>the turn, step by step</small>
-          </article>
-        </div>
+      <section class="guide" aria-labelledby="guide-title">
+        <p class="eyebrow">START HERE / NO API KEY NEEDED</p>
+        <h2 id="guide-title">One small task. Three things to check.</h2>
+        <ol>
+          <li>
+            <strong>Run the example.</strong> Expect 391, two tool calls, and
+            three planner calls.
+          </li>
+          <li>
+            <strong>Expand the trace.</strong> Inspect the calculation and the
+            saved value.
+          </li>
+          <li>
+            <strong>Restart and recall.</strong> Stop Python with Ctrl+C, run it
+            again, then choose “recall memory”.
+          </li>
+        </ol>
+        <p>
+          Demo uses fixed rules, not an LLM. Live mode swaps in a model using
+          the same loop and tools.
+        </p>
       </section>
 
       <section class="workbench" aria-label="Agent workbench">
         <div class="composer-panel">
           <div class="panel-heading">
             <div>
-              <p class="panel-kicker">TASK / 001</p>
+              <p class="panel-kicker">TASK</p>
               <h2>Give the agent a job</h2>
             </div>
             <div class="mode-control" aria-label="Agent mode">
-              <button class="mode-button selected" data-mode="demo" type="button">Demo</button>
-              <button class="mode-button" data-mode="live" type="button">Live</button>
+              <button
+                class="mode-button selected"
+                data-mode="demo"
+                type="button"
+              >
+                Demo
+              </button>
+              <button class="mode-button" data-mode="live" type="button">
+                Live
+              </button>
             </div>
           </div>
 
@@ -76,14 +85,31 @@
             <textarea
               id="task-input"
               name="task"
-              rows="5"
+              rows="3"
               maxlength="2000"
               spellcheck="true"
-            >Calculate 17 × 23 and remember the result as launch score.</textarea>
+            >
+Calculate 17 × 23 and remember the result as launch score.</textarea
+            >
             <div class="examples" aria-label="Example tasks">
-              <button type="button" data-example="Calculate 17 * 23 and remember the result as launch score.">calculate + remember</button>
-              <button type="button" data-example="What do you remember about launch score?">recall memory</button>
-              <button type="button" data-example="What is the current time?">read local time</button>
+              <button
+                type="button"
+                data-example="Calculate 17 * 23 and remember the result as launch score."
+              >
+                calculate + remember
+              </button>
+              <button
+                type="button"
+                data-example="What do you remember about launch score?"
+              >
+                recall memory
+              </button>
+              <button
+                type="button"
+                data-example="Calculate 1 / 0 and remember the result as invalid score."
+              >
+                try a failure
+              </button>
             </div>
             <div class="run-row">
               <button id="run-button" class="run-button" type="submit">
@@ -95,23 +121,42 @@
           </form>
 
           <aside class="reply-card" id="reply-card" aria-live="polite">
-            <span class="reply-index">AGENT / REPLY</span>
-            <p id="reply-text">Waiting for a task. The trace will reveal every step.</p>
+            <span class="reply-index">RESULT</span>
+            <p id="reply-text">
+              Waiting for a task. The trace will reveal every step.
+            </p>
           </aside>
         </div>
 
         <div class="trace-panel">
           <div class="panel-heading trace-heading">
             <div>
-              <p class="panel-kicker">LIVE TRACE</p>
+              <p class="panel-kicker">EXECUTION TRACE</p>
               <h2>Inside the turn</h2>
             </div>
             <span id="trace-clock">0 ms</span>
           </div>
+          <p class="trace-note">
+            Recorded calls and results, shown after the turn completes. This is
+            not the model’s private reasoning.
+          </p>
+          <p id="turn-summary" class="trace-note" aria-live="polite">
+            No turn yet.
+          </p>
+          <button
+            id="download-trace"
+            class="trace-download"
+            type="button"
+            disabled
+          >
+            Download turn JSON
+          </button>
           <div id="trace-list" class="trace-list" aria-live="polite">
             <div class="trace-empty">
               <div class="loop-glyph" aria-hidden="true"><span>↻</span></div>
-              <p>Run a task to watch the loop reason, act, and observe.</p>
+              <p>
+                Run a task, then expand each step to inspect its recorded data.
+              </p>
             </div>
           </div>
         </div>
@@ -120,26 +165,29 @@
       <section class="ledger" aria-labelledby="ledger-title">
         <div class="ledger-heading">
           <div>
-            <p class="eyebrow">LOCAL STATE / SQLITE</p>
+            <p class="eyebrow">SAVED STATE · SQLITE</p>
             <h2 id="ledger-title">What survives the turn</h2>
           </div>
           <div class="metrics">
-            <span><b id="metric-memories">0</b> memories</span>
-            <span><b id="metric-turns">0</b> traced turns</span>
+            <span><b id="metric-memories">0</b> recent memories</span>
+            <span><b id="metric-turns">0</b> recent turns</span>
             <span><b>4</b> local tools</span>
           </div>
         </div>
         <div id="memory-grid" class="memory-grid">
           <article class="memory-empty">
             <span>EMPTY BY DEFAULT</span>
-            <p>Ask the agent to remember something. It will appear here and remain after restart.</p>
+            <p>
+              Ask the agent to remember something. It will appear here and
+              remain after restart.
+            </p>
           </article>
         </div>
       </section>
     </main>
 
     <footer>
-      <p>Built from first principles. Inspired by transparent agent architecture.</p>
+      <p>Built by Leo Zhao · A small study in inspectable agent execution.</p>
       <p>Python · SQLite · HTML/CSS/JS · no frontend framework</p>
     </footer>
 

@@ -1,20 +1,17 @@
-# LinkedIn launch draft
+# Loop Agent — project description draft
 
-I wanted to understand what is actually inside an AI agent, so I built a small one from first principles.
+Loop Agent is a small Python project for checking what happens inside an agent turn.
 
-**Loop Agent** has four parts:
+Ask it to calculate a value and remember it, expand the tool calls and observations, then restart
+the app and retrieve the saved fact. The default demo needs no API key; an optional function-calling
+model uses the same loop and tools.
 
-→ a readable reason–act–observe loop
-→ a registry of safe local tools
-→ durable SQLite memory
-→ a live trace that shows every step of a turn
+The design centers on a simple distinction: requesting an action is not evidence that it succeeded.
+One practical example is the failure path: a calculator error stays an error and is not saved as a result
+in demo mode.
 
-The demo runs without an API key, and the whole backend is plain Python. You can ask it to calculate something, save the result, restart it, and recall the memory later.
+Python · SQLite · local tools · expandable execution traces
 
-This was inspired by transparent agent projects such as Waku, but implemented from scratch as a smaller learning build. My goal was not to create another chatbot. It was to make the system behind one visible and understandable.
+Repository: https://github.com/LobsterQBA/loop-agent
 
-Code: **https://github.com/LobsterQBA/loop-agent**
-
-What is the smallest agent architecture you would still call useful?
-
-#AIEngineering #AIAgents #Python #BuildInPublic #LLMOps
+For resume wording and technical discussion prompts, see [Presenting Loop Agent](docs/presentation.md).
