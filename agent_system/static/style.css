@@ -127,6 +127,12 @@ h1 br::after {
   max-width: 650px;
   font-size: 15px;
 }
+.hero-detail {
+  color: var(--muted);
+  margin: 6px 0 0;
+  max-width: 650px;
+  font-size: 13px;
+}
 h2 {
   font-size: 17px;
   font-weight: 550;

@@ -12,6 +12,7 @@ def test_recorded_site_uses_real_fresh_process_results_and_relative_assets(tmp_p
     assert 'src="./app.js"' in html
     assert 'src="/app.js"' not in html
     assert "it does not run an AI model" in html
+    assert "An AI agent with tools, memory, and a step-by-step execution trace." in html
     assert "2. recall after restart</button>" in html
     assert "3. try a failure</button>" in html
     examples = json.loads((site / "examples.json").read_text())["examples"]

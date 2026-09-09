@@ -1,6 +1,6 @@
 # Loop Agent
 
-**An agent you can inspect: what it called, what came back, and what it remembered.**
+**An AI agent with tools, memory, and a step-by-step execution trace.**
 
 A small Python project by [Leo Zhao](https://github.com/LobsterQBA). Give it a task such as
 “calculate a number and remember it,” then expand the execution record to check the result.
