@@ -6,7 +6,7 @@ import pytest
 from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem
 from agent_system.memory import MemoryStore
 from agent_system.models import DemoModel, ModelReply, ToolCall
-from agent_system.tools import build_tools
+from agent_system.tools import Tool, ToolRegistry, build_tools
 
 
 def make_agent(tmp_path, model=None, max_iterations=6):
@@ -58,6 +58,29 @@ class FailingAfterWriteModel:
         raise RuntimeError("provider disconnected")
 
 
+class DuplicateToolCallModel:
+    name = "duplicate-tool-call"
+
+    def complete(self, messages, tools):
+        tool_results = [message for message in messages if message.get("role") == "tool"]
+        if len(tool_results) < 2:
+            return ModelReply(tool_calls=[ToolCall("stable-call-id", "increment", {})])
+        return ModelReply(text="Finished without repeating the side effect.")
+
+
+class ConflictingToolCallModel:
+    name = "conflicting-tool-call"
+
+    def complete(self, messages, tools):
+        if not any(message.get("role") == "tool" for message in messages):
+            return ModelReply(
+                tool_calls=[ToolCall("reused-call-id", "remember", {"key": "state", "value": "one"})]
+            )
+        return ModelReply(
+            tool_calls=[ToolCall("reused-call-id", "remember", {"key": "state", "value": "two"})]
+        )
+
+
 def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     agent = make_agent(tmp_path, model=EndlessModel(), max_iterations=2)
     turn = agent.run("keep going")
@@ -66,6 +89,47 @@ def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     assert turn.tool_calls == 2
     assert "iteration limit" in turn.reply.lower()
     assert any(event["kind"] == "guardrail" for event in turn.trace)
+
+
+def test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect(tmp_path):
+    executions = 0
+
+    def increment():
+        nonlocal executions
+        executions += 1
+        return executions
+
+    memory = MemoryStore(tmp_path / "state.db")
+    tools = ToolRegistry()
+    tools.register(
+        Tool(
+            name="increment",
+            description="Increment a test counter.",
+            parameters={"type": "object", "properties": {}, "additionalProperties": False},
+            function=increment,
+        )
+    )
+    agent = AgentSystem(model=DuplicateToolCallModel(), tools=tools, memory=memory)
+
+    turn = agent.run("run the increment once")
+
+    assert executions == 1
+    assert turn.tool_calls == 2
+    assert [event["kind"] for event in turn.trace].count("deduplicate") == 1
+    observations = [event["detail"] for event in turn.trace if event["kind"] == "observe"]
+    assert observations == [{"ok": True, "result": 1}, {"ok": True, "result": 1}]
+
+
+def test_reused_tool_call_id_with_different_input_fails_and_records_turn(tmp_path):
+    agent = make_agent(tmp_path, model=ConflictingToolCallModel())
+
+    with pytest.raises(RuntimeError, match="reused with different input"):
+        agent.run("reject an ambiguous repeated call")
+
+    assert agent.memory.recall("state")[0]["value"] == "one"
+    failed_turn = agent.memory.recent_turns()[0]
+    assert failed_turn["status"] == "failed"
+    assert "reused with different input" in failed_turn["error"]
 
 
 def test_failed_turn_is_persisted_with_partial_tool_effects(tmp_path):

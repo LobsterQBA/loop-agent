@@ -57,6 +57,7 @@ class AgentSystem:
         started = time.perf_counter()
         trace: list[dict] = []
         tool_call_count = 0
+        tool_results_by_call_id: dict[str, tuple[str, str, str]] = {}
 
         def emit(kind: str, title: str, detail) -> None:
             trace.append(
@@ -111,7 +112,28 @@ class AgentSystem:
                 for call in model_reply.tool_calls:
                     tool_call_count += 1
                     emit("tool", f"Tool call · {call.name}", call.arguments)
-                    output = self.tools.execute(call.name, call.arguments)
+                    arguments_json = json.dumps(
+                        call.arguments, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    )
+                    previous = tool_results_by_call_id.get(call.id)
+                    if previous is not None:
+                        previous_name, previous_arguments, output = previous
+                        if (previous_name, previous_arguments) != (call.name, arguments_json):
+                            raise RuntimeError(
+                                f"tool call id {call.id!r} was reused with different input"
+                            )
+                        emit(
+                            "deduplicate",
+                            f"Reused result · {call.name}",
+                            {"tool_call_id": call.id},
+                        )
+                    else:
+                        output = self.tools.execute(call.name, call.arguments)
+                        tool_results_by_call_id[call.id] = (
+                            call.name,
+                            arguments_json,
+                            output,
+                        )
                     emit("observe", f"Observe · {call.name}", json.loads(output))
                     messages.append(
                         {

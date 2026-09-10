@@ -55,6 +55,11 @@ An iteration is a model/planner call, not a tool call. Multiple tools returned i
 sequentially. Text without tool calls ends the turn. Exhaustion returns a guardrail reply and saves its trace.
 The default is six iterations; the constructor clamps overrides to 1–12.
 
+Within a turn, the loop keeps the result of each tool-call ID. If a provider repeats the same ID,
+tool name, and arguments, the loop appends a `deduplicate` event and returns the first observation
+without executing the tool again. Reusing an ID with different input fails and records the turn;
+silently pairing new input with an old result would make the trace untrustworthy.
+
 ## What is stored, and what is not
 
 | State | Lifetime | Detail |
@@ -118,6 +123,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Failed calculation is not saved; prior value survives | Failure regression tests in [test_agent.py](../tests/test_agent.py) |
 | Endless tool requests stop | `test_iteration_guardrail_stops_endless_tool_calls` |
 | Provider failure after a write persists status, error, and partial-effect evidence | `test_failed_turn_is_persisted_with_partial_tool_effects` |
+| Duplicate tool-call IDs do not repeat side effects | `test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect` |
 | Existing SQLite turn ledgers migrate with completed status | `test_memory_migrates_existing_turn_ledgers` |
 | Restricted arithmetic and tool errors | [test_tools.py](../tests/test_tools.py) |
 | Input validation and local API | [test_server.py](../tests/test_server.py) |

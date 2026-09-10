@@ -37,6 +37,8 @@ function traceStep(event) {
     reason:
       "The planner or model receives the instruction and any tool results so far.",
     tool: "The requested function receives these arguments. A request alone does not mean success.",
+    deduplicate:
+      "This tool call ID was already executed with the same input, so the loop reused its recorded result instead of repeating the side effect.",
     observe: event.detail?.ok
       ? "The tool returned successfully. This result goes back into working context."
       : "The tool reported an error. Inspect it before trusting a result or saving a value.",

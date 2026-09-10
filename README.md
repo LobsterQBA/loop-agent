@@ -75,6 +75,7 @@ See the [walkthrough](docs/walkthrough.md) for expected output and troubleshooti
 | A deterministic demo and an optional LLM adapter | Make the project reproducible before adding model variability | [Adapters](agent_system/models.py), [walkthrough](agent_system/walkthrough.py) |
 | Explicit SQLite memory | Show what persists; don't pretend a new turn remembers the conversation | [Store](agent_system/memory.py), restart check |
 | Structured tool errors | A failed calculation must not become a saved result | [Regression tests](tests/test_agent.py) |
+| Idempotent tool-call handling | A repeated provider call ID reuses its recorded result instead of repeating a side effect | [Loop tests](tests/test_agent.py) |
 | A bounded tool surface | Explore agent control with four local functions | [Registry and calculator](agent_system/tools.py) |
 
 The default planner uses rules, **not an LLM**. It runs real tools and writes real SQLite records.
@@ -99,6 +100,8 @@ flowchart LR
 Each iteration asks the planner/model what to do next. A tool result becomes input to the next
 iteration. A text reply ends the loop; a six-iteration budget prevents indefinite repetition.
 A single iteration can request multiple tools, so this is not a six-tool-call or dollar-cost cap.
+Within one turn, repeated tool-call IDs with identical inputs reuse the first result. Reusing an ID
+with different input fails the turn because the provider response is ambiguous.
 
 [Read the architecture](docs/architecture.md) for the full lifecycle, source map, and limitations.
 
@@ -154,7 +157,8 @@ python -m agent_system.walkthrough
 
 CI runs the deterministic tests and walkthrough on Python 3.11 and 3.12. Tests cover multi-tool
 execution, restart persistence, failed calculations, iteration exhaustion, restricted arithmetic,
-and HTTP input validation. They do not benchmark LLM accuracy, latency, or production throughput.
+duplicate tool-call suppression, and HTTP input validation. They do not benchmark LLM accuracy,
+latency, or production throughput.
 
 ## Hosting and presentation
 
