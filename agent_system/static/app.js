@@ -122,7 +122,7 @@ function setMode(mode) {
   });
   modeNote.textContent =
     mode === "demo"
-      ? "Deterministic planner · no API key"
+      ? "Fixed demo rules · no API key"
       : "Function-calling model · key stays server-side";
 }
 
@@ -147,7 +147,7 @@ form.addEventListener("submit", async (event) => {
   if (!message) return;
 
   runButton.disabled = true;
-  runButton.querySelector("span").textContent = "Running the loop…";
+  runButton.querySelector("span").textContent = "Running task…";
   replyText.textContent = "Running tools and collecting results…";
   state.turn = null;
   document.querySelector("#download-trace").disabled = true;
@@ -195,7 +195,7 @@ form.addEventListener("submit", async (event) => {
     runButton.disabled = false;
     runButton.querySelector("span").textContent = state.recorded
       ? "Show recorded turn"
-      : "Run one turn";
+      : "Run task";
   }
 });
 

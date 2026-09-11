@@ -56,7 +56,7 @@ def build_site(destination: Path) -> None:
     html = html.replace('>Instruction</label>', '>Recorded instruction</label>')
     html = html.replace('Recorded calls and results, shown after the turn completes.',
                         'Recorded calls and results from the selected example.')
-    html = html.replace('What survives the turn', 'Memory after this recorded turn')
+    html = html.replace('Saved facts', 'Saved facts after this example')
     html = html.replace('Waiting for a task. The trace will reveal every step.',
                         'Choose an example, then show its recorded turn. Expand each step to check the data.')
     html = html.replace('Run a task, then expand each step to inspect its recorded data.',

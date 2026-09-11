@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="A small, readable agent system with a visible loop, local tools, SQLite memory, and trace."
+      content="See how a Python agent calculates, saves a result, and recalls it after a restart."
     />
-    <title>Loop Agent · Inspect a turn</title>
+    <title>Loop Agent · Tools and memory, step by step</title>
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
@@ -28,27 +28,27 @@
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <p class="eyebrow">A SMALL AGENT, OPEN TO INSPECTION</p>
+        <p class="eyebrow">TOOLS AND MEMORY, STEP BY STEP</p>
         <h1 id="hero-title">Loop Agent</h1>
         <p class="lede">
-          An AI agent with tools, memory, and a step-by-step execution trace.
+          See how an agent uses tools to finish a task.
         </p>
         <p class="hero-detail">
-          Follow a task from instruction to tool calls to saved memory. Every
-          result has a record you can open.
+          Calculate a number, save it, and recall it after a restart.
+          Open each step to see what ran and what came back.
         </p>
       </section>
 
       <section class="guide" aria-labelledby="guide-title">
         <p class="eyebrow">START HERE / NO API KEY NEEDED</p>
-        <h2 id="guide-title">One small task. Three things to check.</h2>
+        <h2 id="guide-title">Calculate, save, and recall.</h2>
         <ol>
           <li>
-            <strong>Run the example.</strong> Expect 391, two tool calls, and
-            three planner calls.
+            <strong>Run the example.</strong> Calculate 17 × 23 and save
+            the answer, 391.
           </li>
           <li>
-            <strong>Expand the trace.</strong> Inspect the calculation and the
+            <strong>Open the steps.</strong> Inspect the calculation and the
             saved value.
           </li>
           <li>
@@ -116,10 +116,10 @@ Calculate 17 × 23 and remember the result as launch score.</textarea
             </div>
             <div class="run-row">
               <button id="run-button" class="run-button" type="submit">
-                <span>Run one turn</span>
+                <span>Run task</span>
                 <b aria-hidden="true">↗</b>
               </button>
-              <p id="mode-note">Deterministic planner · no API key</p>
+              <p id="mode-note">Fixed demo rules · no API key</p>
             </div>
           </form>
 
@@ -135,7 +135,7 @@ Calculate 17 × 23 and remember the result as launch score.</textarea
           <div class="panel-heading trace-heading">
             <div>
               <p class="panel-kicker">EXECUTION TRACE</p>
-              <h2>Inside the turn</h2>
+              <h2>What happened, step by step</h2>
             </div>
             <span id="trace-clock">0 ms</span>
           </div>
@@ -169,7 +169,7 @@ Calculate 17 × 23 and remember the result as launch score.</textarea
         <div class="ledger-heading">
           <div>
             <p class="eyebrow">SAVED STATE · SQLITE</p>
-            <h2 id="ledger-title">What survives the turn</h2>
+            <h2 id="ledger-title">Saved facts</h2>
           </div>
           <div class="metrics">
             <span><b id="metric-memories">0</b> recent memories</span>
@@ -190,7 +190,7 @@ Calculate 17 × 23 and remember the result as launch score.</textarea
     </main>
 
     <footer>
-      <p>Built by Leo Zhao · A small study in inspectable agent execution.</p>
+      <p>Built by Leo Zhao · Python tools, saved facts, and a record of each run.</p>
       <p>Python · SQLite · HTML/CSS/JS · no frontend framework</p>
     </footer>
 

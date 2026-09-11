@@ -1,46 +1,27 @@
 # Loop Agent
 
-**An AI agent with tools, memory, and a step-by-step execution trace.**
+A small Python app that shows how an agent uses tools to finish a task.
 
-A small Python project by [Leo Zhao](https://github.com/LobsterQBA). Give it a task such as
-“calculate a number and remember it,” then expand the execution record to check the result.
-Restart the app and retrieve the saved fact from SQLite.
+Ask it to **calculate 17 × 23 and save the result**. It runs the calculator, stores `391`
+in SQLite, and shows each tool call and result. Restart the app and ask for the value again:
+it is still there.
 
-**The design question:** how can a reader verify an agent's work instead of trusting its final answer?
-Loop Agent makes the execution record part of the product: tool arguments, success or failure,
-loop limits, and durable state are visible. The scope stays small enough to follow in source.
+I built this to understand the loop behind a tool-using agent: choose an action, run it,
+read the result, and decide what to do next. The core loop is in
+[agent.py](agent_system/agent.py).
 
-**[Open the interactive walkthrough →](https://lobsterqba.github.io/loop-agent/)**
+**[Try the browser demo →](https://lobsterqba.github.io/loop-agent/)**
 
-No installation. Three recorded Python runs: save a result, recall it after restart, and inspect a failure.
-The hosted page replays actual execution records; run locally to enter your own tasks.
+The browser demo replays three recorded runs: calculate and save, recall after a restart,
+and handle a failed calculation. Run locally to enter your own tasks.
 
 [![CI](https://github.com/LobsterQBA/loop-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/LobsterQBA/loop-agent/actions/workflows/ci.yml)
 
-[![Loop Agent: task, result, and expandable execution trace](docs/cockpit.png)](https://lobsterqba.github.io/loop-agent/)
-
-<details>
-<summary><strong>Watch the three examples (short step-through GIF)</strong></summary>
-
-![Actual interface states: calculation, recall, and a failed calculation](docs/demo.gif)
-
-Captured from the interactive replay, with pauses between examples; not a real-time LLM recording.
-
-</details>
-
-## Choose your depth
-
-| Time | Start here | What you will see |
-| --- | --- | --- |
-| 30 seconds | This page | The problem, working example, and engineering choices |
-| 3 minutes | [Run the demo](#try-it-locally) | A calculation, saved memory, and a checkable execution record |
-| 5 minutes, no setup | [Annotated walkthrough](docs/walkthrough.md) | Expand each step, including a failure case |
-| 10 minutes | [Architecture and tradeoffs](docs/architecture.md) | Source links, data flow, limits, and what would change for production |
+[![Loop Agent showing a task, its result, and the steps it took](docs/cockpit.png)](https://lobsterqba.github.io/loop-agent/)
 
 ## Try it locally
 
-Requires **Python 3.11+** and Git. The default demo has **no dependencies, no API key, and no model charges**.
-Use `python` instead of `python3` if that is your Python 3.11+ command.
+Requires **Python 3.11+**. The default demo needs no extra packages or API key.
 
 ```bash
 git clone https://github.com/LobsterQBA/loop-agent.git
@@ -48,103 +29,56 @@ cd loop-agent
 python3 -m agent_system
 ```
 
-Open [localhost:8787](http://127.0.0.1:8787), then:
+Open [localhost:8787](http://127.0.0.1:8787) and try the three examples:
 
-1. Run the prefilled instruction: **Calculate 17 × 23 and remember the result as launch score.**
-   Expect **391**, **2 tool calls**, and **3 planner calls**.
-2. Expand **Inspect recorded data** under a tool call and its observation. Compare the requested
-   expression, returned number, and saved value. **Download turn JSON** exports that completed turn.
-3. Stop the server with **Ctrl+C**, start it with the same command from the same directory, then click
-   **recall memory** and run it. Expect `launch score: 391`; the database survived the restart.
-4. Click **try a failure** and run it. Division by zero returns an error, and no result is saved.
+1. **Calculate + remember:** run the prefilled task. The answer is `391`. Expand the steps
+   to see the calculation and the saved value.
+2. **Recall memory:** stop the server with Ctrl+C, restart it from the same directory,
+   and run the recall example. It retrieves `launch score: 391` from SQLite.
+3. **Try a failure:** division by zero returns an error without saving an invalid result.
 
-No browser? Run the same core flow, including a restart check, in an isolated temporary database:
+Demo mode follows a few fixed rules. Live mode connects an LLM to the same tools.
+The [walkthrough](docs/walkthrough.md) explains each step and includes troubleshooting.
 
-```bash
-python3 -m agent_system.walkthrough
+## How it works
+
+```text
+Your task → planner → tool → result back to planner → … → reply
+                       ↕
+                     SQLite
 ```
 
-It exits with a nonzero status if an expected behavior fails. It does not touch your saved app state.
-See the [walkthrough](docs/walkthrough.md) for expected output and troubleshooting.
+The planner chooses a tool or returns a final reply. Each tool result goes back to the planner,
+which decides the next step. The app saves the completed run and displays its calls and results.
 
-## What this demonstrates
+| Part | What it does |
+| --- | --- |
+| [Agent loop](agent_system/agent.py) | Runs the steps, stops after six planner calls by default, and avoids repeating a tool call with the same ID and inputs within a run |
+| [Tools](agent_system/tools.py) | Calculate, remember a fact, recall saved facts, and get the current time |
+| [Memory](agent_system/memory.py) | Stores facts and run history in a local SQLite database |
+| [Model adapters](agent_system/models.py) | Use fixed demo rules or an OpenAI-compatible model |
+| [Web interface](agent_system/static/index.html) | Shows the task, reply, saved facts, and expandable execution steps |
 
-| Engineering choice | Why it matters | Evidence |
-| --- | --- | --- |
-| A readable tool loop | Separate a requested action from its observed result | [Loop](agent_system/agent.py), expandable UI trace |
-| A deterministic demo and an optional LLM adapter | Make the project reproducible before adding model variability | [Adapters](agent_system/models.py), [walkthrough](agent_system/walkthrough.py) |
-| Explicit SQLite memory | Show what persists; don't pretend a new turn remembers the conversation | [Store](agent_system/memory.py), restart check |
-| Structured tool errors | A failed calculation must not become a saved result | [Regression tests](tests/test_agent.py) |
-| Idempotent tool-call handling | A repeated provider call ID reuses its recorded result instead of repeating a side effect | [Loop tests](tests/test_agent.py) |
-| A bounded tool surface | Explore agent control with four local functions | [Registry and calculator](agent_system/tools.py) |
+Each task starts with fresh working messages; saved facts are available through the recall tool.
+The execution record shows tool calls and results after a run finishes, not private model reasoning.
 
-The default planner uses rules, **not an LLM**. It runs real tools and writes real SQLite records.
-Live mode uses the same loop with an OpenAI-compatible function-calling model. The trace records
-calls and results; it does **not** expose private model reasoning. It appears after the turn completes,
-not as a live stream.
-
-## How a turn works
-
-```mermaid
-flowchart LR
-    U[Instruction] --> L[Bounded loop]
-    L --> M[Demo planner or LLM]
-    M -->|Tool request| T[Registered local function]
-    T -->|Observed result| L
-    T <-->|Remember / recall| D[(SQLite)]
-    M -->|Final text| R[Reply]
-    R --> P[Persist turn and trace]
-    P --> V[Expandable execution record]
-```
-
-Each iteration asks the planner/model what to do next. A tool result becomes input to the next
-iteration. A text reply ends the loop; a six-iteration budget prevents indefinite repetition.
-A single iteration can request multiple tools, so this is not a six-tool-call or dollar-cost cap.
-Within one turn, repeated tool-call IDs with identical inputs reuse the first result. Reusing an ID
-with different input fails the turn because the provider response is ambiguous.
-
-[Read the architecture](docs/architecture.md) for the full lifecycle, source map, and limitations.
-
-<details>
-<summary><strong>Optional: connect a live model</strong></summary>
+## Connect a model
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e '.[live]'
 cp .env.example .env
-# Set AGENT_API_KEY and AGENT_MODEL in .env
-loop-agent
 ```
 
-On Windows, activate with `.venv\Scripts\activate`. Set `AGENT_BASE_URL` only if using another
-OpenAI-compatible endpoint. Select **Live** in the app after restarting the server.
-The API key stays on the server. The provider receives the instruction, tool schemas, and tool results;
-provider fees apply. Demo tests do not establish live-model quality or provider compatibility.
+Set `AGENT_API_KEY` and `AGENT_MODEL` in `.env`, then start `python3 -m agent_system`
+and select **Live**. Set `AGENT_BASE_URL` if using another OpenAI-compatible endpoint.
+On Windows, activate the environment with `.venv\Scripts\activate`.
 
-</details>
+The key stays on the server. Tasks and tool results go to your configured provider, whose
+usage fees apply. The included tests use demo rules; live-model behavior depends on the provider and model.
 
-<details>
-<summary><strong>Optional: use the local JSON API</strong></summary>
-
-```bash
-curl -X POST http://127.0.0.1:8787/api/run \
-  -H 'Content-Type: application/json' \
-  -d '{"message":"Calculate 8 * 9","mode":"demo"}'
-```
-
-The response includes `reply`, `trace`, `iterations`, `tool_calls`, `mode`, `model`, and `turn_id`.
-`GET /api/status` describes configuration; `GET /api/memory` returns up to 20 recent memories and
-8 recent turn summaries. These are limited lists, not lifetime totals.
-
-Requests require JSON (otherwise HTTP 415), a nonempty string of at most 2,000 characters, and mode
-`demo` or `live`. Invalid input returns HTTP 400 before a turn is created. Unconfigured live mode
-returns HTTP 409. State lives at `.agent-mini/state.db`, relative to the launch directory, unless
-`AGENT_HOME` is set.
-
-</details>
-
-## Verify it
+## Run the checks
 
 ```bash
 python3 -m venv .venv
@@ -155,27 +89,18 @@ ruff check .
 python -m agent_system.walkthrough
 ```
 
-CI runs the deterministic tests and walkthrough on Python 3.11 and 3.12. Tests cover multi-tool
-execution, restart persistence, failed calculations, iteration exhaustion, restricted arithmetic,
-duplicate tool-call suppression, and HTTP input validation. They do not benchmark LLM accuracy,
-latency, or production throughput.
+The walkthrough checks calculation, saving, recall in a fresh process, and a failed calculation.
+The tests also cover loop limits, duplicate tool calls, failure records, and HTTP input validation.
 
-## Hosting and presentation
+## Limits and further reading
 
-The [GitHub Pages walkthrough](https://lobsterqba.github.io/loop-agent/) is generated from real demo
-turns in fresh processes. It serves static assets and no API keys or visitor state.
-[Build and deployment details](docs/hosting.md) · [Resume and interview notes](docs/presentation.md).
+This is a local learning project with four tools. The server binds to localhost and has no
+login or multi-user support. Memory writes commit separately from the run record, so a failed
+run can leave earlier writes in place. Demo prompts are limited to the supplied patterns.
 
-## Scope and next decisions
+- [Step-by-step walkthrough](docs/walkthrough.md)
+- [Architecture, API, and limitations](docs/architecture.md)
+- [Building and hosting the browser demo](docs/hosting.md)
 
-This is a local portfolio project, not a hosted service. There is no shell, browser, messaging,
-or arbitrary-file tool. The server binds to localhost; it has no authentication or multi-user isolation.
-Memory writes and the final trace are separate database transactions, so a failed turn can leave
-partial effects. The failed turn and its trace are persisted to make those effects inspectable;
-a process crash can still interrupt before that record is written.
-
-The next engineering priority would be transactional policies for partial tool effects, followed by
-live-model evaluation against task-specific criteria. See [the tradeoffs](docs/architecture.md#tradeoffs-and-next-decisions).
-
-Architecture inspiration: [Waku](https://github.com/ShenSeanChen/waku-agent). This repository was
-implemented from scratch with a smaller scope. [MIT license](LICENSE).
+Built by [Leo Zhao](https://github.com/LobsterQBA). Inspired by
+[Waku](https://github.com/ShenSeanChen/waku-agent), implemented from scratch. [MIT license](LICENSE).

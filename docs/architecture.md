@@ -1,10 +1,10 @@
-# Architecture: make the work checkable
+# Architecture
 
 [← Project overview](../README.md) · [Step-by-step walkthrough](walkthrough.md)
 
-The core design separates **intent**, **execution**, and **evidence**. The planner requests a tool;
-the registry executes it; the observation records what happened. A final answer is one output of that
-process, not sufficient evidence that a requested action succeeded.
+The planner picks a tool, the registry runs it, and the result goes back to the planner.
+The loop repeats until the planner replies or reaches its limit. Each call and result is
+recorded so you can see what happened.
 
 ## Source reading order
 
@@ -130,3 +130,19 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 
 CI runs on Python 3.11 and 3.12. Browser layout, accessibility, provider compatibility, model quality,
 and production load require separate validation; a green Python suite does not establish them.
+
+## Local JSON API
+
+```bash
+curl -X POST http://127.0.0.1:8787/api/run \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Calculate 8 * 9","mode":"demo"}'
+```
+
+The response includes `reply`, `trace`, `iterations`, `tool_calls`, `mode`, `model`, and `turn_id`.
+`GET /api/status` describes configuration. `GET /api/memory` returns up to 20 recent memories and
+8 recent turn summaries, rather than lifetime totals.
+
+Requests require JSON (otherwise HTTP 415), a nonempty string of at most 2,000 characters, and mode
+`demo` or `live`. Invalid input returns HTTP 400 before a turn is created. Unconfigured live mode
+returns HTTP 409. Set `AGENT_HOME` to change the state directory.

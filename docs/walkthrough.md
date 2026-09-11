@@ -4,14 +4,13 @@
 
 **Task:** Calculate 17 × 23 and remember the result as launch score.
 
-The expected outcome is a saved fact: `launch score = 391`. The useful part is the chain of evidence:
-calculation requested → result observed → memory written → value retrieved in a fresh process.
+The app calculates `391`, saves it as `launch score`, then retrieves it in a fresh process.
 The values below describe the deterministic demo. Timings and IDs vary between runs.
 
 ## Read without installing anything
 
 <details>
-<summary><strong>1. Start the turn — what context does the agent have?</strong></summary>
+<summary><strong>1. Start with a task</strong></summary>
 
 The server validates the instruction. The loop starts with a system instruction and this user message.
 Previous chat messages are not loaded. Saved facts are accessible through the recall tool.
@@ -22,7 +21,7 @@ The trace begins with `input` and then a model-call event.
 </details>
 
 <details>
-<summary><strong>2. Request a calculation — a request is not a result</strong></summary>
+<summary><strong>2. Call the calculator</strong></summary>
 
 The demo planner recognizes arithmetic and asks for `calculate`:
 
@@ -38,7 +37,7 @@ it cannot run Python functions, imports, or attribute access.
 </details>
 
 <details>
-<summary><strong>3. Observe 391 — what evidence returns to the planner?</strong></summary>
+<summary><strong>3. Return 391 to the planner</strong></summary>
 
 The tool returns:
 
@@ -54,7 +53,7 @@ with the result available. This is why a tool request and an observation are sep
 </details>
 
 <details>
-<summary><strong>4. Save the observed result — what actually persists?</strong></summary>
+<summary><strong>4. Save the result in SQLite</strong></summary>
 
 The second planner call requests `remember`:
 
@@ -75,7 +74,7 @@ Saving the same key updates it. This is an explicit fact store, not semantic sea
 </details>
 
 <details>
-<summary><strong>5. Finish — why three planner calls but only two tool calls?</strong></summary>
+<summary><strong>5. Reply and save the run</strong></summary>
 
 The first planner call requests calculation, the second requests memory, and the third returns text.
 The loop saves the turn and its trace. The UI shows a short explanation for each event; expand
@@ -96,7 +95,7 @@ not hidden reasoning. `elapsed_ms` is elapsed wall time since the turn began, no
 </details>
 
 <details>
-<summary><strong>6. Restart and recall — how do we rule out in-process memory?</strong></summary>
+<summary><strong>6. Restart and retrieve the saved value</strong></summary>
 
 Stop and restart the Python server from the same directory. Ask:
 
@@ -120,9 +119,8 @@ Expected: the calculator reports `ok: false`; the demo planner says it did not s
 There is one calculator call, no memory write, and a completed trace explaining the failure.
 If the key already existed, this failed calculation leaves its previous value untouched.
 
-This illustrates the project's central choice: a tool error should stay an error, rather than becoming
-an apparently valid fact. This behavior is guaranteed by demo rules and regression tests; the optional
-live model makes its own tool decisions and is not proven to follow the same policy.
+The demo planner checks for a successful calculation before saving. Tests cover this behavior;
+the optional live model makes its own tool decisions and may handle the error differently.
 
 ## Run the checks without a browser
 
