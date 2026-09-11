@@ -19,6 +19,43 @@ and handle a failed calculation. Run locally to enter your own tasks.
 
 [![Loop Agent showing a task, its result, and the steps it took](docs/cockpit.png)](https://lobsterqba.github.io/loop-agent/)
 
+## The loop at a glance
+
+```mermaid
+flowchart LR
+    Task["Your task"] --> Planner{"Choose the next step"}
+    Planner -->|Call a tool| Tool["Calculate, save, recall, or get time"]
+    Tool --> Result["Tool result"]
+    Result --> Planner
+    Planner -->|Task finished| Reply["Reply"]
+    Reply --> Record["Save the run and show its steps"]
+```
+
+The planner uses fixed rules in Demo mode or a model in Live mode. The loop stops after
+six planner calls by default if it has not finished.
+
+## Three examples
+
+```mermaid
+flowchart TB
+    subgraph Save["1 · Calculate and save"]
+        direction LR
+        A["17 × 23"] --> B["Calculator: 391"] --> C[("Save launch score = 391")]
+    end
+    subgraph Recall["2 · Recall after restarting Python"]
+        direction LR
+        D["Ask for launch score"] --> E[("Read the same SQLite file")] --> F["Return 391"]
+    end
+    subgraph Fail["3 · Handle a failed calculation"]
+        direction LR
+        G["1 ÷ 0"] --> H["Calculator: error"] --> I["Explain the error; skip saving"]
+    end
+    Save ~~~ Recall ~~~ Fail
+```
+
+These are the fixed-rule demo paths. The browser demo lets you open the recorded calls
+and results for all three. Live mode makes its own tool choices.
+
 ## Try it locally
 
 Requires **Python 3.11+**. The default demo needs no extra packages or API key.
@@ -40,16 +77,7 @@ Open [localhost:8787](http://127.0.0.1:8787) and try the three examples:
 Demo mode follows a few fixed rules. Live mode connects an LLM to the same tools.
 The [walkthrough](docs/walkthrough.md) explains each step and includes troubleshooting.
 
-## How it works
-
-```text
-Your task → planner → tool → result back to planner → … → reply
-                       ↕
-                     SQLite
-```
-
-The planner chooses a tool or returns a final reply. Each tool result goes back to the planner,
-which decides the next step. The app saves the completed run and displays its calls and results.
+## Where to find the code
 
 | Part | What it does |
 | --- | --- |

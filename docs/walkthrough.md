@@ -7,7 +7,35 @@
 The app calculates `391`, saves it as `launch score`, then retrieves it in a fresh process.
 The values below describe the deterministic demo. Timings and IDs vary between runs.
 
-## Read without installing anything
+## Follow the example
+
+```mermaid
+sequenceDiagram
+    participant P as Demo planner
+    participant C as Calculator
+    participant DB as SQLite
+    participant UI as Browser
+    Note over P: Call 1 · choose calculate
+    P->>C: 17 * 23
+    C-->>P: 391
+    Note over P: Call 2 · choose remember
+    P->>DB: Save launch score = 391
+    DB-->>P: Saved
+    Note over P: Call 3 · return a reply
+    Note over P,DB: The loop saves the run and trace
+    P-->>UI: Reply and completed steps
+    Note over P,UI: Stop and restart Python
+    Note over P: New task · ask for launch score
+    P->>DB: Recall launch score
+    DB-->>P: 391
+    P-->>UI: launch score: 391
+```
+
+The arrows abbreviate the loop's tool dispatch: the planner requests an action and the Python
+loop runs it. Calculation and saving take **three planner calls and two tool calls**.
+Recall after restart takes **two planner calls and one tool call**.
+
+## Open each step
 
 <details>
 <summary><strong>1. Start with a task</strong></summary>
@@ -114,6 +142,18 @@ The CLI walkthrough below verifies this by launching a separate Python process f
 ## Try the failure path
 
 > Calculate 1 / 0 and remember the result as invalid score.
+
+```mermaid
+flowchart TD
+    Request["Calculate and remember"] --> Calculate["Run calculator"]
+    Calculate --> Check{"Did the calculation succeed?"}
+    Check -->|Yes: 17 × 23 = 391| Save["Save 391 with remember"]
+    Check -->|No: 1 ÷ 0| Skip["Skip remember; keep existing facts"]
+    Save --> Reply["Reply and record the run"]
+    Skip --> Reply
+```
+
+This decision is part of the **demo planner**.
 
 Expected: the calculator reports `ok: false`; the demo planner says it did not save a result.
 There is one calculator call, no memory write, and a completed trace explaining the failure.

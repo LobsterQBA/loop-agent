@@ -6,6 +6,25 @@ The planner picks a tool, the registry runs it, and the result goes back to the 
 The loop repeats until the planner replies or reaches its limit. Each call and result is
 recorded so you can see what happened.
 
+## Components
+
+```mermaid
+flowchart TB
+    Browser["Browser · task, reply, and steps"] <-->|Local JSON API| Server["server.py · validate requests"]
+    Server --> Agent["agent.py · run the loop"]
+    Agent <-->|Choose next step| Model["models.py · Demo rules or Live model"]
+    Agent <-->|Tool calls and results| Tools["tools.py · calculate, remember, recall, time"]
+    Tools <-->|remember / recall| Facts[("SQLite · memories")]
+    Agent -->|Save run and trace| Runs[("SQLite · turns")]
+    Server -->|Read recent facts and runs| Store["memory.py"]
+    Store --> Facts
+    Store --> Runs
+```
+
+Both tables live in one local database. The browser receives results from the Python server;
+the optional Live model is called from the server too. The hosted browser demo instead loads
+recorded JSON without running this backend.
+
 ## Source reading order
 
 | File | Responsibility | Question to ask while reading |
@@ -22,29 +41,29 @@ recorded so you can see what happened.
 ```mermaid
 sequenceDiagram
     participant UI as Local UI
-    participant Loop as AgentSystem
+    participant Agent as AgentSystem
     participant Model as Planner / LLM
     participant Tools as Registry
     participant DB as SQLite
-    UI->>Loop: Validated instruction
+    UI->>Agent: Validated instruction
     loop At most 6 iterations by default
-        Loop->>Model: Working messages + tool schemas
+        Agent->>Model: Working messages + tool schemas
         alt Tool calls returned
-            Model-->>Loop: Names + arguments
-            Loop->>Tools: Execute registered function
+            Model-->>Agent: Names + arguments
+            Agent->>Tools: Execute registered function
             opt remember or recall
                 Tools->>DB: Write or query facts
                 DB-->>Tools: Result
             end
-            Tools-->>Loop: Structured success or error
-            Note over Loop: Append observation to working messages
+            Tools-->>Agent: Structured success or error
+            Note over Agent: Append observation to working messages
         else Text returned
-            Model-->>Loop: Final reply
-            Note over Loop: Exit loop
+            Model-->>Agent: Final reply
+            Note over Agent: Exit loop
         end
     end
-    Loop->>DB: Save turn + trace
-    Loop-->>UI: Reply + trace + counts
+    Agent->>DB: Save turn + trace
+    Agent-->>UI: Reply + trace + counts
 ```
 
 The loop uses the same `Model.complete(messages, tools)` interface for both modes.
@@ -60,7 +79,33 @@ tool name, and arguments, the loop appends a `deduplicate` event and returns the
 without executing the tool again. Reusing an ID with different input fails and records the turn;
 silently pairing new input with an old result would make the trace untrustworthy.
 
-## What is stored, and what is not
+## What survives a restart
+
+```mermaid
+flowchart LR
+    subgraph First["Before restart"]
+        Context["Working messages for this task"]
+        Remember["remember tool"]
+        Finish["Completed or handled failed run"]
+    end
+    subgraph Disk["SQLite file · stays on disk"]
+        Facts[("memories · saved facts")]
+        Runs[("turns · replies, status, and traces")]
+    end
+    subgraph Next["After restart"]
+        Fresh["New task starts with fresh messages"]
+        Recall["recall tool reads saved facts"]
+    end
+    Context -.->|Not reloaded| Fresh
+    Remember -->|Commit a fact| Facts
+    Finish -->|Separate commit| Runs
+    Facts --> Recall
+```
+
+Facts and run records are separate writes. If a later step fails, a fact already saved can
+remain. Old conversation messages are not automatically loaded into the next task.
+
+## Stored data
 
 | State | Lifetime | Detail |
 | --- | --- | --- |
