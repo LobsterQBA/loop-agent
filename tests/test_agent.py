@@ -3,7 +3,7 @@ import sqlite3
 
 import pytest
 
-from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem
+from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem, AgentTurnError
 from agent_system.memory import MemoryStore
 from agent_system.models import DemoModel, ModelReply, ToolCall
 from agent_system.tools import Tool, ToolRegistry, build_tools
@@ -135,9 +135,12 @@ def test_reused_tool_call_id_with_different_input_fails_and_records_turn(tmp_pat
 def test_failed_turn_is_persisted_with_partial_tool_effects(tmp_path):
     agent = make_agent(tmp_path, model=FailingAfterWriteModel())
 
-    with pytest.raises(RuntimeError, match="provider disconnected"):
+    with pytest.raises(AgentTurnError, match="provider disconnected") as raised:
         agent.run("remember this before failing")
 
+    assert raised.value.turn["status"] == "failed"
+    assert raised.value.turn["tool_calls"] == 1
+    assert raised.value.turn["trace"][-1]["kind"] == "error"
     assert agent.memory.recall("partial")[0]["value"] == "saved"
     failed_turn = agent.memory.recent_turns()[0]
     assert failed_turn["status"] == "failed"

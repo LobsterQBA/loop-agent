@@ -31,6 +31,34 @@ class AgentTurn:
         return asdict(self)
 
 
+class AgentTurnError(RuntimeError):
+    """A failed turn whose persisted execution evidence can still be returned."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        trace: list[dict],
+        iterations: int,
+        tool_calls: int,
+        mode: str,
+        model: str,
+        turn_id: int,
+    ):
+        super().__init__(message)
+        self.turn = {
+            "reply": "",
+            "trace": trace,
+            "iterations": iterations,
+            "tool_calls": tool_calls,
+            "mode": mode,
+            "model": model,
+            "turn_id": turn_id,
+            "status": "failed",
+            "error": message,
+        }
+
+
 class AgentSystem:
     def __init__(
         self,
@@ -149,7 +177,7 @@ class AgentSystem:
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
             emit("error", "Turn failed", {"error": error})
-            self.memory.record_turn(
+            turn_id = self.memory.record_turn(
                 user_message=user_message,
                 reply="",
                 mode=self.mode,
@@ -158,7 +186,15 @@ class AgentSystem:
                 status="failed",
                 error=error,
             )
-            raise
+            raise AgentTurnError(
+                error,
+                trace=trace,
+                iterations=iterations,
+                tool_calls=tool_call_count,
+                mode=self.mode,
+                model=self.model.name,
+                turn_id=turn_id,
+            ) from exc
 
         emit(
             "done",

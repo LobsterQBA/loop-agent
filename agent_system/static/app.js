@@ -45,6 +45,8 @@ function traceStep(event) {
     reply: "The planner or model returned text, so the loop stops.",
     guardrail:
       "The loop reached its iteration budget and stopped without completing the task.",
+    error:
+      "The turn failed after this evidence was recorded. Earlier tool effects may still have happened.",
     done: "This completed turn and its trace are stored in the local SQLite database.",
   };
   const explanation = document.createElement("p");
@@ -170,6 +172,22 @@ form.addEventListener("submit", async (event) => {
         body: JSON.stringify({ message, mode: state.mode }),
       });
       payload = await response.json();
+      if (!response.ok && payload.status === "failed" && Array.isArray(payload.trace)) {
+        state.turn = payload;
+        replyText.textContent = payload.error;
+        renderTrace(payload.trace);
+        document.querySelector("#turn-summary").textContent =
+          `Failed turn ${payload.turn_id} · ${payload.mode} / ${payload.model} · ` +
+          `${payload.iterations} planner/model calls · ${payload.tool_calls} tool call${payload.tool_calls === 1 ? "" : "s"}`;
+        document.querySelector("#download-trace").disabled = false;
+        try {
+          await refreshMemory();
+        } catch {
+          document.querySelector("#turn-summary").textContent +=
+            " · Memory display could not refresh.";
+        }
+        return;
+      }
       if (!response.ok)
         throw new Error(payload.error || "The agent turn failed.");
     }

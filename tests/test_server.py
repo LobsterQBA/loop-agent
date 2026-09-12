@@ -18,6 +18,13 @@ def request_json(url, *, payload=None):
         return response.status, json.load(response)
 
 
+class FailingModel:
+    name = "failing-test-model"
+
+    def complete(self, messages, tools):
+        raise RuntimeError("provider disconnected")
+
+
 def test_local_api_runs_a_demo_turn(tmp_path):
     server = create_server(port=0, home=tmp_path / "agent-home")
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -62,6 +69,35 @@ def test_live_mode_requires_configuration(tmp_path, monkeypatch):
             assert "AGENT_API_KEY" in payload["error"]
         else:
             raise AssertionError("live mode should be unavailable without configuration")
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+
+def test_failed_agent_turn_returns_its_persisted_trace(tmp_path):
+    server = create_server(port=0, home=tmp_path / "agent-home")
+    server.app.demo.model = FailingModel()
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        try:
+            request_json(f"{base}/api/run", payload={"message": "start", "mode": "demo"})
+        except urllib.error.HTTPError as exc:
+            assert exc.code == 500
+            payload = json.loads(exc.read())
+            assert payload["status"] == "failed"
+            assert payload["error"] == "RuntimeError: provider disconnected"
+            assert payload["model"] == "failing-test-model"
+            assert [event["kind"] for event in payload["trace"]] == [
+                "input",
+                "reason",
+                "error",
+            ]
+            assert server.app.memory.recent_turns()[0]["id"] == payload["turn_id"]
+        else:
+            raise AssertionError("failed agent turn should return HTTP 500")
     finally:
         server.shutdown()
         server.server_close()

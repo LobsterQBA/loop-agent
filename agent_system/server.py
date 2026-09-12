@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from agent_system import __version__
-from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem
+from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem, AgentTurnError
 from agent_system.memory import MemoryStore
 from agent_system.models import DemoModel, LiveModel
 from agent_system.tools import build_tools
@@ -183,6 +183,8 @@ class AgentHandler(BaseHTTPRequestHandler):
             self._json(self.app.run(message, mode))
         except (TypeError, ValueError) as exc:
             self._json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
+        except AgentTurnError as exc:
+            self._json(exc.turn, HTTPStatus.INTERNAL_SERVER_ERROR)
         except RuntimeError as exc:
             self._json({"error": str(exc)}, HTTPStatus.CONFLICT)
         except Exception as exc:  # noqa: BLE001 - keep the local HTTP process alive
