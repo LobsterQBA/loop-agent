@@ -90,7 +90,8 @@ The [walkthrough](docs/walkthrough.md) explains each step and includes troublesh
 Each task starts with fresh working messages; saved facts are available through the recall tool.
 The execution record shows tool calls and results after a run finishes, not private model reasoning.
 If a provider or loop error aborts a run, the cockpit still shows and exports the persisted failed
-trace, including any earlier tool effects.
+trace, including any earlier tool effects. The recent-run cards reopen completed and failed traces
+after a browser refresh or server restart.
 
 ## Connect a model
 
@@ -120,7 +121,8 @@ python -m agent_system.walkthrough
 ```
 
 The walkthrough checks calculation, saving, recall in a fresh process, and a failed calculation.
-The tests also cover loop limits, duplicate tool calls, failure records, and HTTP input validation.
+The tests also cover loop limits, duplicate tool calls, failure records, reopening saved traces, and
+HTTP input validation.
 
 ## Limits and further reading
 

@@ -93,21 +93,64 @@ function renderMemory(payload) {
       "Ask the agent to remember something. It will appear here and remain after restart.";
     empty.append(label, text);
     grid.append(empty);
-    return;
+  } else {
+    payload.memories.forEach((memory, index) => {
+      const card = document.createElement("article");
+      card.className = "memory-card";
+      const label = document.createElement("span");
+      label.textContent = `MEMORY / ${String(index + 1).padStart(2, "0")}`;
+      const key = document.createElement("h3");
+      key.textContent = memory.key;
+      const value = document.createElement("p");
+      value.textContent = memory.value;
+      card.append(label, key, value);
+      grid.append(card);
+    });
   }
-  payload.memories.forEach((memory, index) => {
-    const card = document.createElement("article");
-    card.className = "memory-card";
+
+  const history = document.querySelector("#turn-history");
+  history.replaceChildren();
+  payload.turns.forEach((turn) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "turn-card";
+    button.dataset.turnId = turn.id;
+    button.disabled = state.recorded;
+    if (state.recorded) button.title = "Run locally to reopen saved traces.";
     const label = document.createElement("span");
-    label.textContent = `MEMORY / ${String(index + 1).padStart(2, "0")}`;
-    const key = document.createElement("h3");
-    key.textContent = memory.key;
-    const value = document.createElement("p");
-    value.textContent = memory.value;
-    card.append(label, key, value);
-    grid.append(card);
+    label.textContent = `${turn.status.toUpperCase()} / ${turn.id}`;
+    const message = document.createElement("strong");
+    message.textContent = turn.user_message;
+    const meta = document.createElement("small");
+    meta.textContent = `${turn.mode} · ${turn.iterations} calls · ${turn.created_at} UTC`;
+    button.append(label, message, meta);
+    history.append(button);
   });
 }
+
+async function loadSavedTurn(turnId) {
+  const response = await fetch(`/api/turns/${turnId}`);
+  const turn = await response.json();
+  if (!response.ok) throw new Error(turn.error || "Saved turn could not be loaded.");
+  state.turn = turn;
+  replyText.textContent = turn.status === "failed" ? turn.error : turn.reply;
+  renderTrace(turn.trace);
+  document.querySelector("#turn-summary").textContent =
+    `${turn.status === "failed" ? "Failed turn" : "Saved turn"} ${turn.turn_id} · ${turn.mode} · ` +
+    `${turn.iterations} planner/model calls · ${turn.tool_calls} tool call${turn.tool_calls === 1 ? "" : "s"}`;
+  document.querySelector("#download-trace").disabled = false;
+  document.querySelector(".trace-panel").scrollIntoView({ behavior: "smooth" });
+}
+
+document.querySelector("#turn-history").addEventListener("click", async (event) => {
+  const button = event.target.closest("[data-turn-id]");
+  if (!button || state.recorded) return;
+  try {
+    await loadSavedTurn(button.dataset.turnId);
+  } catch (error) {
+    replyText.textContent = error.message;
+  }
+});
 
 async function refreshMemory() {
   const response = await fetch("/api/memory");

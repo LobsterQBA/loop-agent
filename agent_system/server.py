@@ -145,6 +145,15 @@ class AgentHandler(BaseHTTPRequestHandler):
                 }
             )
             return
+        if path.startswith("/api/turns/"):
+            raw_turn_id = path.removeprefix("/api/turns/")
+            if raw_turn_id.isdigit():
+                turn = self.app.memory.turn(int(raw_turn_id))
+                if turn is not None:
+                    self._json(turn)
+                    return
+            self._json({"error": "turn not found"}, HTTPStatus.NOT_FOUND)
+            return
 
         static_path = "/index.html" if path == "/" else path
         candidate = (STATIC_ROOT / static_path.lstrip("/")).resolve()

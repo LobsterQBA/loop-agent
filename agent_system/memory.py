@@ -139,3 +139,19 @@ class MemoryStore:
                 (limit,),
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def turn(self, turn_id: int) -> dict | None:
+        """Return one persisted turn with its full trace."""
+        with self._connect() as conn:
+            row = conn.execute(
+                """SELECT id, user_message, reply, mode, iterations, status, error,
+                created_at, trace_json FROM turns WHERE id = ?""",
+                (turn_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        turn = dict(row)
+        turn["turn_id"] = turn.pop("id")
+        turn["trace"] = json.loads(turn.pop("trace_json"))
+        turn["tool_calls"] = sum(event.get("kind") == "tool" for event in turn["trace"])
+        return turn

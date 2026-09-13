@@ -112,14 +112,14 @@ remain. Old conversation messages are not automatically loaded into the next tas
 | Working messages | One turn | System instruction, user input, tool requests, and observations |
 | Facts | Durable | Unique key; later writes replace its value; text normalized and length-limited |
 | Turn ledger | Durable after completion or handled failure | User input, reply, mode, iterations, status, error, timestamp, JSON trace |
-| UI trace | Current completed turn | Expand raw data or export returned JSON; not streamed |
+| UI trace | Current or selected recent turn | Reopen persisted traces, expand raw data, or export returned JSON; not streamed |
 | Live API key | Server configuration | Not sent to the browser or stored in the turn ledger |
 
 Facts and the ledger live in `.agent-mini/state.db` by default. Recall uses literal substring matching
 with escaped SQL wildcard characters and parameterized values. It is not vector retrieval.
-The memory endpoint returns capped recent lists. The UI labels these as recent counts.
-Old traces remain in SQLite, but browsing them in the UI is not yet implemented. Existing databases
-are migrated in place with `completed` status for their historical rows.
+The memory endpoint returns capped recent lists. The UI labels these as recent counts and lets a
+local user reopen the eight newest persisted traces. Existing databases are migrated in place with
+`completed` status for their historical rows.
 
 A `reason` event means “a model call is starting”; this legacy event name does not imply access to
 private reasoning. A `done` event is assembled before the database write and returned only after that
@@ -172,6 +172,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Existing SQLite turn ledgers migrate with completed status | `test_memory_migrates_existing_turn_ledgers` |
 | Restricted arithmetic and tool errors | [test_tools.py](../tests/test_tools.py) |
 | Input validation and local API | [test_server.py](../tests/test_server.py) |
+| Persisted traces can be reopened and unknown IDs return 404 | `test_local_api_runs_a_demo_turn`, `test_saved_turn_api_returns_not_found_for_unknown_or_invalid_id` |
 
 CI runs on Python 3.11 and 3.12. Browser layout, accessibility, provider compatibility, model quality,
 and production load require separate validation; a green Python suite does not establish them.
@@ -186,7 +187,8 @@ curl -X POST http://127.0.0.1:8787/api/run \
 
 The response includes `reply`, `trace`, `iterations`, `tool_calls`, `mode`, `model`, and `turn_id`.
 `GET /api/status` describes configuration. `GET /api/memory` returns up to 20 recent memories and
-8 recent turn summaries, rather than lifetime totals.
+8 recent turn summaries, rather than lifetime totals. `GET /api/turns/{id}` returns one persisted
+turn with its full trace, or HTTP 404 when that turn does not exist.
 
 Requests require JSON (otherwise HTTP 415), a nonempty string of at most 2,000 characters, and mode
 `demo` or `live`. Invalid input returns HTTP 400 before a turn is created. Unconfigured live mode

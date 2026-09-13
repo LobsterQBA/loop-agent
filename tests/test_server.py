@@ -44,6 +44,33 @@ def test_local_api_runs_a_demo_turn(tmp_path):
         assert status == 200
         assert turn["tool_calls"] == 1
         assert "72" in turn["reply"]
+
+        status, saved_turn = request_json(f"{base}/api/turns/{turn['turn_id']}")
+        assert status == 200
+        assert saved_turn["turn_id"] == turn["turn_id"]
+        assert saved_turn["reply"] == turn["reply"]
+        assert saved_turn["trace"] == turn["trace"]
+        assert saved_turn["tool_calls"] == 1
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+
+def test_saved_turn_api_returns_not_found_for_unknown_or_invalid_id(tmp_path):
+    server = create_server(port=0, home=tmp_path / "agent-home")
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        for path in ["/api/turns/999", "/api/turns/not-an-id"]:
+            try:
+                request_json(f"{base}{path}")
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 404
+                assert json.loads(exc.read()) == {"error": "turn not found"}
+            else:
+                raise AssertionError("unknown turn should return HTTP 404")
     finally:
         server.shutdown()
         server.server_close()

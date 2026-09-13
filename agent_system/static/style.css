@@ -462,6 +462,44 @@ textarea[readonly] {
 .memory-empty p {
   margin: 6px 0;
 }
+.turn-history {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+.turn-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.turn-card:hover,
+.turn-card:focus-visible {
+  border-color: var(--ink);
+}
+.turn-card:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+.turn-card span,
+.turn-card small {
+  display: block;
+  color: var(--muted);
+  font: 10px var(--mono);
+}
+.turn-card strong {
+  display: block;
+  margin: 7px 0;
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 footer {
   max-width: 1220px;
   margin: auto;
