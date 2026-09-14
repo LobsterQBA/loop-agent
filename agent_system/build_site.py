@@ -10,6 +10,7 @@ import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
+from agent_system.evaluation import evaluate_trace
 from agent_system.walkthrough import run_turn
 
 MESSAGES = [
@@ -75,6 +76,8 @@ def build_site(destination: Path) -> None:
         database = Path(folder) / "state.db"
         for message in MESSAGES:
             result = run_turn(database, message)
+            result["turn"]["status"] = "completed"
+            result["turn"]["evaluation"] = evaluate_trace(result["turn"])
             turns.append({"id": result["turn"]["turn_id"]})
             examples.append({
                 "message": message,

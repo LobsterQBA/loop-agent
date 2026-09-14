@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 from agent_system import __version__
 from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem, AgentTurnError
+from agent_system.evaluation import evaluate_trace
 from agent_system.memory import MemoryStore
 from agent_system.models import DemoModel, LiveModel
 from agent_system.tools import build_tools
@@ -76,7 +77,10 @@ class Application:
         if len(message) > MAX_MESSAGE_CHARS:
             raise ValueError(f"message must be at most {MAX_MESSAGE_CHARS} characters")
         agent = self.demo if mode == "demo" else self.live()
-        return agent.run(message).to_dict()
+        turn = agent.run(message).to_dict()
+        turn["status"] = "completed"
+        turn["evaluation"] = evaluate_trace(turn)
+        return turn
 
     def status(self) -> dict:
         return {
@@ -150,6 +154,7 @@ class AgentHandler(BaseHTTPRequestHandler):
             if raw_turn_id.isdigit():
                 turn = self.app.memory.turn(int(raw_turn_id))
                 if turn is not None:
+                    turn["evaluation"] = evaluate_trace(turn)
                     self._json(turn)
                     return
             self._json({"error": "turn not found"}, HTTPStatus.NOT_FOUND)
@@ -193,6 +198,7 @@ class AgentHandler(BaseHTTPRequestHandler):
         except (TypeError, ValueError) as exc:
             self._json({"error": str(exc)}, HTTPStatus.BAD_REQUEST)
         except AgentTurnError as exc:
+            exc.turn["evaluation"] = evaluate_trace(exc.turn)
             self._json(exc.turn, HTTPStatus.INTERNAL_SERVER_ERROR)
         except RuntimeError as exc:
             self._json({"error": str(exc)}, HTTPStatus.CONFLICT)

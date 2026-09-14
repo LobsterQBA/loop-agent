@@ -32,6 +32,7 @@ recorded JSON without running this backend.
 | [agent.py](../agent_system/agent.py) | One bounded turn | When does the loop continue, stop, and persist? |
 | [models.py](../agent_system/models.py) | Demo and live adapters | What changes when fixed rules are replaced by an LLM? |
 | [tools.py](../agent_system/tools.py) | Registry, schemas, execution | What can actually run, and how do errors return? |
+| [evaluation.py](../agent_system/evaluation.py) | Deterministic trace checks | Is the recorded evidence internally consistent? |
 | [memory.py](../agent_system/memory.py) | SQLite facts and turn records | Which state outlives the process? |
 | [server.py](../agent_system/server.py) | HTTP validation and static assets | Where does external input enter? |
 | [app.js](../agent_system/static/app.js) | Explanations and raw event disclosures | Can a reader distinguish a request from a successful result? |
@@ -173,6 +174,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Restricted arithmetic and tool errors | [test_tools.py](../tests/test_tools.py) |
 | Input validation and local API | [test_server.py](../tests/test_server.py) |
 | Persisted traces can be reopened and unknown IDs return 404 | `test_local_api_runs_a_demo_turn`, `test_saved_turn_api_returns_not_found_for_unknown_or_invalid_id` |
+| Trace steps, timing, observations, terminal event, and outcome are checked | [test_evaluation.py](../tests/test_evaluation.py) |
 
 CI runs on Python 3.11 and 3.12. Browser layout, accessibility, provider compatibility, model quality,
 and production load require separate validation; a green Python suite does not establish them.
@@ -185,7 +187,9 @@ curl -X POST http://127.0.0.1:8787/api/run \
   -d '{"message":"Calculate 8 * 9","mode":"demo"}'
 ```
 
-The response includes `reply`, `trace`, `iterations`, `tool_calls`, `mode`, `model`, and `turn_id`.
+The response includes `reply`, `trace`, `iterations`, `tool_calls`, `mode`, `model`, `turn_id`, and
+a deterministic `evaluation` of trace integrity. A passed trace means the evidence is structurally
+consistent; it does not grade task correctness or answer quality.
 `GET /api/status` describes configuration. `GET /api/memory` returns up to 20 recent memories and
 8 recent turn summaries, rather than lifetime totals. `GET /api/turns/{id}` returns one persisted
 turn with its full trace, or HTTP 404 when that turn does not exist.

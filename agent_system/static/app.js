@@ -77,6 +77,13 @@ function renderTrace(trace) {
   traceClock.textContent = `${last?.elapsed_ms || 0} ms`;
 }
 
+function evaluationLabel(turn) {
+  const evaluation = turn.evaluation;
+  if (!evaluation) return "";
+  const summary = evaluation.summary;
+  return ` · trace ${evaluation.trace_integrity} (${summary.checks_passed}/${summary.checks_total} checks)`;
+}
+
 function renderMemory(payload) {
   document.querySelector("#metric-memories").textContent =
     payload.memories.length;
@@ -137,7 +144,8 @@ async function loadSavedTurn(turnId) {
   renderTrace(turn.trace);
   document.querySelector("#turn-summary").textContent =
     `${turn.status === "failed" ? "Failed turn" : "Saved turn"} ${turn.turn_id} · ${turn.mode} · ` +
-    `${turn.iterations} planner/model calls · ${turn.tool_calls} tool call${turn.tool_calls === 1 ? "" : "s"}`;
+    `${turn.iterations} planner/model calls · ${turn.tool_calls} tool call${turn.tool_calls === 1 ? "" : "s"}` +
+    evaluationLabel(turn);
   document.querySelector("#download-trace").disabled = false;
   document.querySelector(".trace-panel").scrollIntoView({ behavior: "smooth" });
 }
@@ -221,7 +229,8 @@ form.addEventListener("submit", async (event) => {
         renderTrace(payload.trace);
         document.querySelector("#turn-summary").textContent =
           `Failed turn ${payload.turn_id} · ${payload.mode} / ${payload.model} · ` +
-          `${payload.iterations} planner/model calls · ${payload.tool_calls} tool call${payload.tool_calls === 1 ? "" : "s"}`;
+          `${payload.iterations} planner/model calls · ${payload.tool_calls} tool call${payload.tool_calls === 1 ? "" : "s"}` +
+          evaluationLabel(payload);
         document.querySelector("#download-trace").disabled = false;
         try {
           await refreshMemory();
@@ -239,7 +248,8 @@ form.addEventListener("submit", async (event) => {
     renderTrace(payload.trace);
     document.querySelector("#turn-summary").textContent =
       `${state.recorded ? "Recorded turn" : "Turn"} ${payload.turn_id} · ${payload.mode} / ${payload.model} · ` +
-      `${payload.iterations} planner/model calls · ${payload.tool_calls} tool call${payload.tool_calls === 1 ? "" : "s"}`;
+      `${payload.iterations} planner/model calls · ${payload.tool_calls} tool call${payload.tool_calls === 1 ? "" : "s"}` +
+      evaluationLabel(payload);
     document.querySelector("#download-trace").disabled = false;
     try {
       if (!state.recorded) await refreshMemory();

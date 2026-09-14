@@ -18,6 +18,10 @@ def test_recorded_site_uses_real_fresh_process_results_and_relative_assets(tmp_p
     examples = json.loads((site / "examples.json").read_text())["examples"]
     first, recall, failure = examples
     assert first["turn"]["tool_calls"] == 2
+    assert all(
+        example["turn"]["evaluation"]["trace_integrity"] == "passed"
+        for example in examples
+    )
     assert "launch score = 391" in recall["turn"]["reply"]
     assert "did not save" in failure["turn"]["reply"]
     assert failure["memory"]["memories"] == first["memory"]["memories"]

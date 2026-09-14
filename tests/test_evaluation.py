@@ -1,0 +1,85 @@
+from agent_system.evaluation import evaluate_trace
+
+
+def event(step, kind, elapsed_ms):
+    return {"step": step, "kind": kind, "title": kind, "detail": {}, "elapsed_ms": elapsed_ms}
+
+
+def test_completed_trace_passes_all_integrity_checks():
+    evaluation = evaluate_trace(
+        {
+            "status": "completed",
+            "reply": "The answer is 42.",
+            "trace": [
+                event(1, "input", 0),
+                event(2, "reason", 1),
+                event(3, "tool", 2),
+                event(4, "observe", 3),
+                event(5, "reply", 4),
+                event(6, "done", 5),
+            ],
+        }
+    )
+
+    assert evaluation["trace_integrity"] == "passed"
+    assert evaluation["summary"] == {
+        "checks_passed": 5,
+        "checks_total": 5,
+        "tool_calls": 1,
+        "observations": 1,
+        "duration_ms": 5,
+    }
+
+
+def test_evaluation_reports_each_trace_integrity_failure():
+    evaluation = evaluate_trace(
+        {
+            "status": "completed",
+            "reply": "",
+            "trace": [event(2, "tool", 8), event(3, "done", 4)],
+        }
+    )
+
+    assert evaluation["trace_integrity"] == "failed"
+    assert evaluation["summary"]["checks_passed"] == 1
+    assert {check["name"] for check in evaluation["checks"] if not check["passed"]} == {
+        "sequential_steps",
+        "monotonic_timing",
+        "tool_observations",
+        "outcome_recorded",
+    }
+
+
+def test_failed_trace_uses_error_as_its_terminal_outcome():
+    evaluation = evaluate_trace(
+        {
+            "status": "failed",
+            "reply": "",
+            "error": "RuntimeError: provider disconnected",
+            "trace": [event(1, "input", 0), event(2, "error", 2)],
+        }
+    )
+
+    assert evaluation["task_status"] == "failed"
+    assert evaluation["trace_integrity"] == "passed"
+
+
+def test_equal_tool_and_observation_counts_do_not_hide_bad_ordering():
+    evaluation = evaluate_trace(
+        {
+            "status": "completed",
+            "reply": "done",
+            "trace": [
+                event(1, "tool", 0),
+                event(2, "tool", 1),
+                event(3, "observe", 2),
+                event(4, "observe", 3),
+                event(5, "done", 4),
+            ],
+        }
+    )
+
+    tool_check = next(
+        check for check in evaluation["checks"] if check["name"] == "tool_observations"
+    )
+    assert tool_check["passed"] is False

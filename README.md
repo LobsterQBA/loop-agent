@@ -82,6 +82,7 @@ The [walkthrough](docs/walkthrough.md) explains each step and includes troublesh
 | Part | What it does |
 | --- | --- |
 | [Agent loop](agent_system/agent.py) | Runs the steps, stops after six planner calls by default, and avoids repeating a tool call with the same ID and inputs within a run |
+| [Trace evaluation](agent_system/evaluation.py) | Runs deterministic integrity checks over the recorded steps, timing, tool observations, terminal event, and outcome |
 | [Tools](agent_system/tools.py) | Calculate, remember a fact, recall saved facts, and get the current time |
 | [Memory](agent_system/memory.py) | Stores facts and run history in a local SQLite database |
 | [Model adapters](agent_system/models.py) | Use fixed demo rules or an OpenAI-compatible model |
@@ -89,6 +90,8 @@ The [walkthrough](docs/walkthrough.md) explains each step and includes troublesh
 
 Each task starts with fresh working messages; saved facts are available through the recall tool.
 The execution record shows tool calls and results after a run finishes, not private model reasoning.
+Each returned run also reports whether its trace passed five deterministic integrity checks. This
+evaluates the evidence structure, not whether the model's answer was correct or useful.
 If a provider or loop error aborts a run, the cockpit still shows and exports the persisted failed
 trace, including any earlier tool effects. The recent-run cards reopen completed and failed traces
 after a browser refresh or server restart.

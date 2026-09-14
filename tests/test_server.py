@@ -44,6 +44,8 @@ def test_local_api_runs_a_demo_turn(tmp_path):
         assert status == 200
         assert turn["tool_calls"] == 1
         assert "72" in turn["reply"]
+        assert turn["evaluation"]["trace_integrity"] == "passed"
+        assert turn["evaluation"]["summary"]["tool_calls"] == 1
 
         status, saved_turn = request_json(f"{base}/api/turns/{turn['turn_id']}")
         assert status == 200
@@ -51,6 +53,7 @@ def test_local_api_runs_a_demo_turn(tmp_path):
         assert saved_turn["reply"] == turn["reply"]
         assert saved_turn["trace"] == turn["trace"]
         assert saved_turn["tool_calls"] == 1
+        assert saved_turn["evaluation"]["trace_integrity"] == "passed"
     finally:
         server.shutdown()
         server.server_close()
