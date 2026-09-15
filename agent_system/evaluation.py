@@ -21,18 +21,25 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
     observations = sum(
         isinstance(event, dict) and event.get("kind") == "observe" for event in events
     )
-    pending_tool = False
+    pending_tool: tuple[object, object] | None = None
     tool_sequence_valid = True
     for event in events:
         kind = event.get("kind") if isinstance(event, dict) else None
         if kind == "tool":
-            if pending_tool:
+            if pending_tool is not None:
                 tool_sequence_valid = False
-            pending_tool = True
+            pending_tool = (event.get("tool_call_id"), event.get("tool_name"))
         elif kind == "observe":
-            if not pending_tool:
+            if pending_tool is None:
                 tool_sequence_valid = False
-            pending_tool = False
+            else:
+                observation_tool = (
+                    event.get("tool_call_id"),
+                    event.get("tool_name"),
+                )
+                if observation_tool != pending_tool:
+                    tool_sequence_valid = False
+            pending_tool = None
 
     steps = [event.get("step") for event in events if isinstance(event, dict)]
     elapsed = [event.get("elapsed_ms") for event in events if isinstance(event, dict)]
@@ -53,8 +60,13 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
         },
         {
             "name": "tool_observations",
-            "passed": tool_calls == observations and tool_sequence_valid and not pending_tool,
-            "detail": f"Recorded {tool_calls} tool call(s) and {observations} observation(s).",
+            "passed": tool_calls == observations
+            and tool_sequence_valid
+            and pending_tool is None,
+            "detail": (
+                f"Recorded {tool_calls} tool call(s) and {observations} matched "
+                "observation(s)."
+            ),
         },
         {
             "name": "terminal_event",

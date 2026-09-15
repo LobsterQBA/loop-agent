@@ -29,6 +29,18 @@ def test_demo_agent_chains_calculate_and_remember(tmp_path):
     assert agent.memory.recall("launch score")[0]["value"] == "391"
     assert [event["kind"] for event in turn.trace].count("tool") == 2
     assert turn.trace[-1]["kind"] == "done"
+    tool_events = [
+        event for event in turn.trace if event["kind"] in {"tool", "observe"}
+    ]
+    assert tool_events[0]["tool_call_id"] == tool_events[1]["tool_call_id"]
+    assert tool_events[2]["tool_call_id"] == tool_events[3]["tool_call_id"]
+    assert tool_events[0]["tool_call_id"] != tool_events[2]["tool_call_id"]
+    assert [event["tool_name"] for event in tool_events] == [
+        "calculate",
+        "calculate",
+        "remember",
+        "remember",
+    ]
 
 
 def test_demo_agent_recalls_saved_memory(tmp_path):

@@ -124,8 +124,8 @@ python -m agent_system.walkthrough
 ```
 
 The walkthrough checks calculation, saving, recall in a fresh process, and a failed calculation.
-The tests also cover loop limits, duplicate tool calls, failure records, reopening saved traces, and
-HTTP input validation.
+The tests also cover loop limits, duplicate tool calls, matching tool-call/observation identities,
+failure records, reopening saved traces, and HTTP input validation.
 
 ## Limits and further reading
 

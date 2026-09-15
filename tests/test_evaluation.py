@@ -83,3 +83,27 @@ def test_equal_tool_and_observation_counts_do_not_hide_bad_ordering():
         check for check in evaluation["checks"] if check["name"] == "tool_observations"
     )
     assert tool_check["passed"] is False
+
+
+def test_tool_observation_check_rejects_mismatched_call_identity():
+    tool = event(2, "tool", 1)
+    tool.update({"tool_call_id": "call-1", "tool_name": "calculate"})
+    observation = event(3, "observe", 2)
+    observation.update({"tool_call_id": "call-2", "tool_name": "calculate"})
+    evaluation = evaluate_trace(
+        {
+            "status": "completed",
+            "reply": "done",
+            "trace": [
+                event(1, "input", 0),
+                tool,
+                observation,
+                event(4, "done", 3),
+            ],
+        }
+    )
+
+    tool_check = next(
+        check for check in evaluation["checks"] if check["name"] == "tool_observations"
+    )
+    assert tool_check["passed"] is False

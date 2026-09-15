@@ -87,16 +87,16 @@ class AgentSystem:
         tool_call_count = 0
         tool_results_by_call_id: dict[str, tuple[str, str, str]] = {}
 
-        def emit(kind: str, title: str, detail) -> None:
-            trace.append(
-                {
-                    "step": len(trace) + 1,
-                    "kind": kind,
-                    "title": title,
-                    "detail": detail,
-                    "elapsed_ms": round((time.perf_counter() - started) * 1_000),
-                }
-            )
+        def emit(kind: str, title: str, detail, **metadata) -> None:
+            event = {
+                "step": len(trace) + 1,
+                "kind": kind,
+                "title": title,
+                "detail": detail,
+                "elapsed_ms": round((time.perf_counter() - started) * 1_000),
+            }
+            event.update(metadata)
+            trace.append(event)
 
         messages: list[dict] = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -139,7 +139,13 @@ class AgentSystem:
 
                 for call in model_reply.tool_calls:
                     tool_call_count += 1
-                    emit("tool", f"Tool call · {call.name}", call.arguments)
+                    emit(
+                        "tool",
+                        f"Tool call · {call.name}",
+                        call.arguments,
+                        tool_call_id=call.id,
+                        tool_name=call.name,
+                    )
                     arguments_json = json.dumps(
                         call.arguments, ensure_ascii=False, sort_keys=True, separators=(",", ":")
                     )
@@ -162,7 +168,13 @@ class AgentSystem:
                             arguments_json,
                             output,
                         )
-                    emit("observe", f"Observe · {call.name}", json.loads(output))
+                    emit(
+                        "observe",
+                        f"Observe · {call.name}",
+                        json.loads(output),
+                        tool_call_id=call.id,
+                        tool_name=call.name,
+                    )
                     messages.append(
                         {
                             "role": "tool",
