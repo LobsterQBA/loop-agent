@@ -51,6 +51,7 @@ def test_local_api_runs_a_demo_turn(tmp_path):
         assert status == 200
         assert saved_turn["turn_id"] == turn["turn_id"]
         assert saved_turn["reply"] == turn["reply"]
+        assert saved_turn["model"] == turn["model"] == "demo-planner"
         assert saved_turn["trace"] == turn["trace"]
         assert saved_turn["tool_calls"] == 1
         assert saved_turn["evaluation"]["trace_integrity"] == "passed"
@@ -126,6 +127,7 @@ def test_failed_agent_turn_returns_its_persisted_trace(tmp_path):
                 "error",
             ]
             assert server.app.memory.recent_turns()[0]["id"] == payload["turn_id"]
+            assert server.app.memory.recent_turns()[0]["model"] == "failing-test-model"
         else:
             raise AssertionError("failed agent turn should return HTTP 500")
     finally:

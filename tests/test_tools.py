@@ -69,6 +69,7 @@ def test_memory_migrates_existing_turn_ledgers(tmp_path):
 
     assert memory.recent_turns()[0]["status"] == "completed"
     assert memory.recent_turns()[0]["error"] is None
+    assert memory.recent_turns()[0]["model"] == "unknown"
 
 
 @pytest.mark.parametrize(

@@ -112,7 +112,7 @@ remain. Old conversation messages are not automatically loaded into the next tas
 | --- | --- | --- |
 | Working messages | One turn | System instruction, user input, tool requests, and observations |
 | Facts | Durable | Unique key; later writes replace its value; text normalized and length-limited |
-| Turn ledger | Durable after completion or handled failure | User input, reply, mode, iterations, status, error, timestamp, JSON trace |
+| Turn ledger | Durable after completion or handled failure | User input, reply, mode, model, iterations, status, error, timestamp, JSON trace |
 | UI trace | Current or selected recent turn | Reopen persisted traces, expand raw data, or export returned JSON; tool calls and observations carry matching call IDs; not streamed |
 | Live API key | Server configuration | Not sent to the browser or stored in the turn ledger |
 
@@ -120,7 +120,7 @@ Facts and the ledger live in `.agent-mini/state.db` by default. Recall uses lite
 with escaped SQL wildcard characters and parameterized values. It is not vector retrieval.
 The memory endpoint returns capped recent lists. The UI labels these as recent counts and lets a
 local user reopen the eight newest persisted traces. Existing databases are migrated in place with
-`completed` status for their historical rows.
+`completed` status and `unknown` model provenance for their historical rows.
 
 A `reason` event means “a model call is starting”; this legacy event name does not imply access to
 private reasoning. A `done` event is assembled before the database write and returned only after that
@@ -171,6 +171,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Provider failure after a write persists status, error, and partial-effect evidence | `test_failed_turn_is_persisted_with_partial_tool_effects` |
 | Duplicate tool-call IDs do not repeat side effects | `test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect` |
 | Existing SQLite turn ledgers migrate with completed status | `test_memory_migrates_existing_turn_ledgers` |
+| Completed and failed turns retain model provenance after reload | `test_local_api_runs_a_demo_turn`, `test_failed_agent_turn_returns_its_persisted_trace` |
 | Restricted arithmetic and tool errors | [test_tools.py](../tests/test_tools.py) |
 | Input validation and local API | [test_server.py](../tests/test_server.py) |
 | Persisted traces can be reopened and unknown IDs return 404 | `test_local_api_runs_a_demo_turn`, `test_saved_turn_api_returns_not_found_for_unknown_or_invalid_id` |

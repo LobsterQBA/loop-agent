@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS turns (
     user_message TEXT NOT NULL,
     reply TEXT NOT NULL,
     mode TEXT NOT NULL,
+    model TEXT NOT NULL DEFAULT 'unknown',
     iterations INTEGER NOT NULL,
     trace_json TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'completed',
@@ -34,6 +35,7 @@ CREATE TABLE IF NOT EXISTS turns (
 """
 
 TURN_COLUMNS = {
+    "model": "TEXT NOT NULL DEFAULT 'unknown'",
     "status": "TEXT NOT NULL DEFAULT 'completed'",
     "error": "TEXT",
 }
@@ -105,6 +107,7 @@ class MemoryStore:
         user_message: str,
         reply: str,
         mode: str,
+        model: str,
         iterations: int,
         trace: list[dict],
         status: str = "completed",
@@ -115,12 +118,13 @@ class MemoryStore:
         with self._connect() as conn:
             cursor = conn.execute(
                 """INSERT INTO turns
-                (user_message, reply, mode, iterations, trace_json, status, error)
-                VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (user_message, reply, mode, model, iterations, trace_json, status, error)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     user_message,
                     reply,
                     mode,
+                    model,
                     iterations,
                     json.dumps(trace, ensure_ascii=False),
                     status,
@@ -134,7 +138,7 @@ class MemoryStore:
         limit = max(1, min(int(limit), 50))
         with self._connect() as conn:
             rows = conn.execute(
-                """SELECT id, user_message, reply, mode, iterations, status, error, created_at
+                """SELECT id, user_message, reply, mode, model, iterations, status, error, created_at
                 FROM turns ORDER BY id DESC LIMIT ?""",
                 (limit,),
             ).fetchall()
@@ -144,7 +148,7 @@ class MemoryStore:
         """Return one persisted turn with its full trace."""
         with self._connect() as conn:
             row = conn.execute(
-                """SELECT id, user_message, reply, mode, iterations, status, error,
+                """SELECT id, user_message, reply, mode, model, iterations, status, error,
                 created_at, trace_json FROM turns WHERE id = ?""",
                 (turn_id,),
             ).fetchone()

@@ -129,7 +129,7 @@ function renderMemory(payload) {
     const message = document.createElement("strong");
     message.textContent = turn.user_message;
     const meta = document.createElement("small");
-    meta.textContent = `${turn.mode} · ${turn.iterations} calls · ${turn.created_at} UTC`;
+    meta.textContent = `${turn.mode} / ${turn.model} · ${turn.iterations} calls · ${turn.created_at} UTC`;
     button.append(label, message, meta);
     history.append(button);
   });
@@ -143,7 +143,7 @@ async function loadSavedTurn(turnId) {
   replyText.textContent = turn.status === "failed" ? turn.error : turn.reply;
   renderTrace(turn.trace);
   document.querySelector("#turn-summary").textContent =
-    `${turn.status === "failed" ? "Failed turn" : "Saved turn"} ${turn.turn_id} · ${turn.mode} · ` +
+    `${turn.status === "failed" ? "Failed turn" : "Saved turn"} ${turn.turn_id} · ${turn.mode} / ${turn.model} · ` +
     `${turn.iterations} planner/model calls · ${turn.tool_calls} tool call${turn.tool_calls === 1 ? "" : "s"}` +
     evaluationLabel(turn);
   document.querySelector("#download-trace").disabled = false;

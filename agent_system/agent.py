@@ -193,6 +193,7 @@ class AgentSystem:
                 user_message=user_message,
                 reply="",
                 mode=self.mode,
+                model=self.model.name,
                 iterations=iterations,
                 trace=trace,
                 status="failed",
@@ -217,6 +218,7 @@ class AgentSystem:
             user_message=user_message,
             reply=reply,
             mode=self.mode,
+            model=self.model.name,
             iterations=iterations,
             trace=trace,
         )

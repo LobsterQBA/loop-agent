@@ -140,6 +140,7 @@ def test_reused_tool_call_id_with_different_input_fails_and_records_turn(tmp_pat
 
     assert agent.memory.recall("state")[0]["value"] == "one"
     failed_turn = agent.memory.recent_turns()[0]
+    assert failed_turn["model"] == "conflicting-tool-call"
     assert failed_turn["status"] == "failed"
     assert "reused with different input" in failed_turn["error"]
 
@@ -155,6 +156,7 @@ def test_failed_turn_is_persisted_with_partial_tool_effects(tmp_path):
     assert raised.value.turn["trace"][-1]["kind"] == "error"
     assert agent.memory.recall("partial")[0]["value"] == "saved"
     failed_turn = agent.memory.recent_turns()[0]
+    assert failed_turn["model"] == "failing-after-write"
     assert failed_turn["status"] == "failed"
     assert failed_turn["reply"] == ""
     assert failed_turn["iterations"] == 2
