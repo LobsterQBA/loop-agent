@@ -72,8 +72,11 @@ The loop uses the same `Model.complete(messages, tools)` interface for both mode
 OpenAI-compatible chat-completions endpoint with function schemas. No model SDK is needed for demo mode.
 
 An iteration is a model/planner call, not a tool call. Multiple tools returned in one iteration execute
-sequentially. Text without tool calls ends the turn. Exhaustion returns a guardrail reply and saves its trace.
-The default is six iterations; the constructor clamps overrides to 1–12.
+sequentially only when the whole batch fits within the turn's remaining tool-call budget. The batch is
+rejected before any of its tools run when it would exceed that budget, which prevents one model response
+from bypassing the iteration guard with many side effects. Text without tool calls ends the turn. Iteration
+exhaustion returns a guardrail reply and saves its trace. The defaults are six iterations and 12 tool calls;
+the constructor clamps overrides to 1–12 and 1–50 respectively.
 
 Within a turn, the loop keeps the result of each tool-call ID. If a provider repeats the same ID,
 tool name, and arguments, the loop appends a `deduplicate` event and returns the first observation
@@ -140,8 +143,8 @@ write succeeds; its elapsed time does not measure the commit duration.
 Failed turns now persist an explicit status, error, and the trace collected before the exception.
 Memory writes still commit independently, so the trace provides evidence of partial effects rather
 than rolling them back. A production design would need a transactional policy for those effects,
-plus tool-call budgets, timeouts, retries, and cancellation before adding more tools. A process crash
-can still happen before the failure record is committed.
+plus timeouts, retries, and cancellation before adding more tools. A process crash can still happen
+before the failure record is committed.
 
 After that, evaluate live mode with task-specific assertions (correct arithmetic, evidence-backed
 memory writes, correct recall, bounded failure handling). Pin the model and configuration and report
@@ -168,6 +171,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Persistence survives fresh Python processes | `python -m agent_system.walkthrough` |
 | Failed calculation is not saved; prior value survives | Failure regression tests in [test_agent.py](../tests/test_agent.py) |
 | Endless tool requests stop | `test_iteration_guardrail_stops_endless_tool_calls` |
+| An oversized tool batch is rejected before side effects | `test_tool_call_budget_rejects_oversized_batch_before_side_effects` |
 | Provider failure after a write persists status, error, and partial-effect evidence | `test_failed_turn_is_persisted_with_partial_tool_effects` |
 | Duplicate tool-call IDs do not repeat side effects | `test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect` |
 | Existing SQLite turn ledgers migrate with completed status | `test_memory_migrates_existing_turn_ledgers` |
@@ -191,7 +195,8 @@ curl -X POST http://127.0.0.1:8787/api/run \
 The response includes `reply`, `trace`, `iterations`, `tool_calls`, `mode`, `model`, `turn_id`, and
 a deterministic `evaluation` of trace integrity. A passed trace means the evidence is structurally
 consistent; it does not grade task correctness or answer quality.
-`GET /api/status` describes configuration. `GET /api/memory` returns up to 20 recent memories and
+`GET /api/status` describes configuration and the message, iteration, and tool-call limits.
+`GET /api/memory` returns up to 20 recent memories and
 8 recent turn summaries, rather than lifetime totals. `GET /api/turns/{id}` returns one persisted
 turn with its full trace, or HTTP 404 when that turn does not exist.
 

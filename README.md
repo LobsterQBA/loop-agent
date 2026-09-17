@@ -32,7 +32,8 @@ flowchart LR
 ```
 
 The planner uses fixed rules in Demo mode or a model in Live mode. The loop stops after
-six planner calls by default if it has not finished.
+six planner calls by default if it has not finished, and a separate 12-call tool budget
+prevents one model response from bypassing that limit with an oversized batch.
 
 ## Three examples
 
@@ -81,7 +82,7 @@ The [walkthrough](docs/walkthrough.md) explains each step and includes troublesh
 
 | Part | What it does |
 | --- | --- |
-| [Agent loop](agent_system/agent.py) | Runs the steps, stops after six planner calls by default, and avoids repeating a tool call with the same ID and inputs within a run |
+| [Agent loop](agent_system/agent.py) | Runs the steps, enforces planner and tool-call budgets, and avoids repeating a tool call with the same ID and inputs within a run |
 | [Trace evaluation](agent_system/evaluation.py) | Runs deterministic integrity checks over the recorded steps, timing, tool observations, terminal event, and outcome |
 | [Tools](agent_system/tools.py) | Calculate, remember a fact, recall saved facts, and get the current time |
 | [Memory](agent_system/memory.py) | Stores facts and run history, including model provenance, in a local SQLite database |
@@ -125,8 +126,8 @@ python -m agent_system.walkthrough
 ```
 
 The walkthrough checks calculation, saving, recall in a fresh process, and a failed calculation.
-The tests also cover loop limits, duplicate tool calls, matching tool-call/observation identities,
-failure records, reopening saved traces, and HTTP input validation.
+The tests also cover loop and tool-call budgets, duplicate tool calls, matching
+tool-call/observation identities, failure records, reopening saved traces, and HTTP input validation.
 
 ## Limits and further reading
 

@@ -93,6 +93,18 @@ class ConflictingToolCallModel:
         )
 
 
+class OversizedToolBatchModel:
+    name = "oversized-tool-batch"
+
+    def complete(self, messages, tools):
+        return ModelReply(
+            tool_calls=[
+                ToolCall("write-one", "remember", {"key": "first", "value": "one"}),
+                ToolCall("write-two", "remember", {"key": "second", "value": "two"}),
+            ]
+        )
+
+
 def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     agent = make_agent(tmp_path, model=EndlessModel(), max_iterations=2)
     turn = agent.run("keep going")
@@ -101,6 +113,29 @@ def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     assert turn.tool_calls == 2
     assert "iteration limit" in turn.reply.lower()
     assert any(event["kind"] == "guardrail" for event in turn.trace)
+
+
+def test_tool_call_budget_rejects_oversized_batch_before_side_effects(tmp_path):
+    memory = MemoryStore(tmp_path / "state.db")
+    agent = AgentSystem(
+        model=OversizedToolBatchModel(),
+        tools=build_tools(memory),
+        memory=memory,
+        max_tool_calls=1,
+    )
+
+    with pytest.raises(AgentTurnError, match="tool-call budget exceeded") as raised:
+        agent.run("do too much at once")
+
+    assert memory.recall() == []
+    assert raised.value.turn["tool_calls"] == 0
+    assert [event["kind"] for event in raised.value.turn["trace"]][-2:] == [
+        "guardrail",
+        "error",
+    ]
+    guardrail = raised.value.turn["trace"][-2]
+    assert guardrail["detail"] == {"limit": 1, "remaining": 1, "requested": 2}
+    assert memory.recent_turns()[0]["status"] == "failed"
 
 
 def test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect(tmp_path):

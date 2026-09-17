@@ -35,7 +35,11 @@ def test_local_api_runs_a_demo_turn(tmp_path):
         assert status == 200
         assert system["version"] == version("loop-agent")
         assert system["tools"] == ["calculate", "current_time", "remember", "recall"]
-        assert system["limits"] == {"max_message_chars": 2_000}
+        assert system["limits"] == {
+            "max_message_chars": 2_000,
+            "max_iterations": 6,
+            "max_tool_calls": 12,
+        }
 
         status, turn = request_json(
             f"{base}/api/run",

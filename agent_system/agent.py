@@ -15,6 +15,7 @@ Use tools when they are useful. Never claim a tool succeeded until you read its 
 The available tools are deliberately local and safe: arithmetic, time, remember, and recall.
 When the task is complete, answer clearly and briefly."""
 MAX_USER_MESSAGE_CHARS = 2_000
+DEFAULT_MAX_TOOL_CALLS = 12
 
 
 @dataclass(frozen=True)
@@ -68,12 +69,14 @@ class AgentSystem:
         memory: MemoryStore,
         mode: str = "demo",
         max_iterations: int = 6,
+        max_tool_calls: int = DEFAULT_MAX_TOOL_CALLS,
     ):
         self.model = model
         self.tools = tools
         self.memory = memory
         self.mode = mode
         self.max_iterations = max(1, min(max_iterations, 12))
+        self.max_tool_calls = max(1, min(max_tool_calls, 50))
 
     def run(self, user_message: str) -> AgentTurn:
         user_message = " ".join(user_message.strip().split())
@@ -116,6 +119,23 @@ class AgentSystem:
                     reply = model_reply.text.strip() or "The model returned an empty reply."
                     emit("reply", "Final reply", reply)
                     break
+
+                remaining_tool_calls = self.max_tool_calls - tool_call_count
+                if len(model_reply.tool_calls) > remaining_tool_calls:
+                    emit(
+                        "guardrail",
+                        "Tool-call budget exceeded",
+                        {
+                            "limit": self.max_tool_calls,
+                            "remaining": remaining_tool_calls,
+                            "requested": len(model_reply.tool_calls),
+                        },
+                    )
+                    raise RuntimeError(
+                        "tool-call budget exceeded: "
+                        f"requested {len(model_reply.tool_calls)} with "
+                        f"{remaining_tool_calls} remaining"
+                    )
 
                 assistant_calls = []
                 for call in model_reply.tool_calls:
