@@ -82,7 +82,7 @@ The [walkthrough](docs/walkthrough.md) explains each step and includes troublesh
 
 | Part | What it does |
 | --- | --- |
-| [Agent loop](agent_system/agent.py) | Runs the steps, enforces planner and tool-call budgets, and avoids repeating a tool call with the same ID and inputs within a run |
+| [Agent loop](agent_system/agent.py) | Runs the steps, enforces planner and tool-call budgets, rejects ambiguous duplicate IDs within one model response, and safely reuses matching results across later iterations |
 | [Trace evaluation](agent_system/evaluation.py) | Runs deterministic integrity checks over the recorded steps, timing, tool observations, terminal event, and outcome |
 | [Tools](agent_system/tools.py) | Calculate, remember a fact, recall saved facts, and get the current time |
 | [Memory](agent_system/memory.py) | Stores facts and run history, including model provenance, in a local SQLite database |
@@ -126,7 +126,7 @@ python -m agent_system.walkthrough
 ```
 
 The walkthrough checks calculation, saving, recall in a fresh process, and a failed calculation.
-The tests also cover loop and tool-call budgets, duplicate tool calls, matching
+The tests also cover loop and tool-call budgets, duplicate IDs and retried tool calls, matching
 tool-call/observation identities, failure records, reopening saved traces, and HTTP input validation.
 
 ## Limits and further reading

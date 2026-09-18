@@ -3,8 +3,10 @@
 [← Project overview](../README.md) · [Step-by-step walkthrough](walkthrough.md)
 
 The planner picks a tool, the registry runs it, and the result goes back to the planner.
-The loop repeats until the planner replies or reaches its limit. Each call and result is
-recorded so you can see what happened.
+The loop repeats until the planner replies or reaches its limit. Before a batch runs, the loop
+rejects duplicate or conflicting tool-call IDs so an ambiguous model response cannot perform a
+partial side effect. A matching ID retried in a later iteration reuses its recorded result. Each
+call and result is recorded so you can see what happened.
 
 ## Components
 
@@ -73,10 +75,11 @@ OpenAI-compatible chat-completions endpoint with function schemas. No model SDK 
 
 An iteration is a model/planner call, not a tool call. Multiple tools returned in one iteration execute
 sequentially only when the whole batch fits within the turn's remaining tool-call budget. The batch is
-rejected before any of its tools run when it would exceed that budget, which prevents one model response
-from bypassing the iteration guard with many side effects. Text without tool calls ends the turn. Iteration
-exhaustion returns a guardrail reply and saves its trace. The defaults are six iterations and 12 tool calls;
-the constructor clamps overrides to 1–12 and 1–50 respectively.
+also preflighted for nonempty, unique call IDs and for conflicts with IDs seen earlier in the turn.
+Invalid batches are rejected before any of their tools run, which prevents one model response from
+causing partial side effects before an identity error is discovered. Text without tool calls ends the
+turn. Iteration exhaustion returns a guardrail reply and saves its trace. The defaults are six iterations
+and 12 tool calls; the constructor clamps overrides to 1–12 and 1–50 respectively.
 
 Within a turn, the loop keeps the result of each tool-call ID. If a provider repeats the same ID,
 tool name, and arguments, the loop appends a `deduplicate` event and returns the first observation
@@ -172,6 +175,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Failed calculation is not saved; prior value survives | Failure regression tests in [test_agent.py](../tests/test_agent.py) |
 | Endless tool requests stop | `test_iteration_guardrail_stops_endless_tool_calls` |
 | An oversized tool batch is rejected before side effects | `test_tool_call_budget_rejects_oversized_batch_before_side_effects` |
+| Duplicate IDs in one batch are rejected before side effects | `test_duplicate_ids_in_one_batch_are_rejected_before_side_effects` |
 | Provider failure after a write persists status, error, and partial-effect evidence | `test_failed_turn_is_persisted_with_partial_tool_effects` |
 | Duplicate tool-call IDs do not repeat side effects | `test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect` |
 | Existing SQLite turn ledgers migrate with completed status | `test_memory_migrates_existing_turn_ledgers` |

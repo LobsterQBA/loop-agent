@@ -138,7 +138,48 @@ class AgentSystem:
                     )
 
                 assistant_calls = []
+                prepared_calls = []
+                batch_call_ids: set[str] = set()
                 for call in model_reply.tool_calls:
+                    if not isinstance(call.id, str) or not call.id.strip():
+                        emit(
+                            "guardrail",
+                            "Invalid tool-call batch",
+                            {"reason": "tool call IDs must be non-empty strings"},
+                        )
+                        raise RuntimeError("tool call IDs must be non-empty strings")
+                    if call.id in batch_call_ids:
+                        emit(
+                            "guardrail",
+                            "Invalid tool-call batch",
+                            {
+                                "reason": "duplicate tool call ID in one model response",
+                                "tool_call_id": call.id,
+                            },
+                        )
+                        raise RuntimeError(
+                            f"tool call id {call.id!r} was duplicated in one model response"
+                        )
+                    batch_call_ids.add(call.id)
+                    arguments_json = json.dumps(
+                        call.arguments, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    )
+                    previous = tool_results_by_call_id.get(call.id)
+                    if previous is not None:
+                        previous_name, previous_arguments, _ = previous
+                        if (previous_name, previous_arguments) != (call.name, arguments_json):
+                            emit(
+                                "guardrail",
+                                "Invalid tool-call batch",
+                                {
+                                    "reason": "tool call ID was reused with different input",
+                                    "tool_call_id": call.id,
+                                },
+                            )
+                            raise RuntimeError(
+                                f"tool call id {call.id!r} was reused with different input"
+                            )
+                    prepared_calls.append((call, arguments_json, previous))
                     assistant_calls.append(
                         {
                             "id": call.id,
@@ -157,7 +198,7 @@ class AgentSystem:
                     }
                 )
 
-                for call in model_reply.tool_calls:
+                for call, arguments_json, previous in prepared_calls:
                     tool_call_count += 1
                     emit(
                         "tool",
@@ -166,16 +207,8 @@ class AgentSystem:
                         tool_call_id=call.id,
                         tool_name=call.name,
                     )
-                    arguments_json = json.dumps(
-                        call.arguments, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                    )
-                    previous = tool_results_by_call_id.get(call.id)
                     if previous is not None:
-                        previous_name, previous_arguments, output = previous
-                        if (previous_name, previous_arguments) != (call.name, arguments_json):
-                            raise RuntimeError(
-                                f"tool call id {call.id!r} was reused with different input"
-                            )
+                        _, _, output = previous
                         emit(
                             "deduplicate",
                             f"Reused result · {call.name}",

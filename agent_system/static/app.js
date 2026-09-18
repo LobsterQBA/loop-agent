@@ -44,7 +44,7 @@ function traceStep(event) {
       : "The tool reported an error. Inspect it before trusting a result or saving a value.",
     reply: "The planner or model returned text, so the loop stops.",
     guardrail:
-      "The loop reached its iteration budget and stopped without completing the task.",
+      "The loop stopped a request that violated a configured safety limit or tool-call identity rule.",
     error:
       "The turn failed after this evidence was recorded. Earlier tool effects may still have happened.",
     done: "This completed turn and its trace are stored in the local SQLite database.",

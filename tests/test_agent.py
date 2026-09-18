@@ -105,6 +105,18 @@ class OversizedToolBatchModel:
         )
 
 
+class DuplicateIdsInOneBatchModel:
+    name = "duplicate-ids-in-one-batch"
+
+    def complete(self, messages, tools):
+        return ModelReply(
+            tool_calls=[
+                ToolCall("duplicate-id", "remember", {"key": "first", "value": "one"}),
+                ToolCall("duplicate-id", "remember", {"key": "second", "value": "two"}),
+            ]
+        )
+
+
 def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     agent = make_agent(tmp_path, model=EndlessModel(), max_iterations=2)
     turn = agent.run("keep going")
@@ -136,6 +148,29 @@ def test_tool_call_budget_rejects_oversized_batch_before_side_effects(tmp_path):
     guardrail = raised.value.turn["trace"][-2]
     assert guardrail["detail"] == {"limit": 1, "remaining": 1, "requested": 2}
     assert memory.recent_turns()[0]["status"] == "failed"
+
+
+def test_duplicate_ids_in_one_batch_are_rejected_before_side_effects(tmp_path):
+    memory = MemoryStore(tmp_path / "state.db")
+    agent = AgentSystem(
+        model=DuplicateIdsInOneBatchModel(),
+        tools=build_tools(memory),
+        memory=memory,
+    )
+
+    with pytest.raises(AgentTurnError, match="duplicated in one model response") as raised:
+        agent.run("reject an ambiguous batch")
+
+    assert memory.recall() == []
+    assert raised.value.turn["tool_calls"] == 0
+    assert [event["kind"] for event in raised.value.turn["trace"]][-2:] == [
+        "guardrail",
+        "error",
+    ]
+    assert raised.value.turn["trace"][-2]["detail"] == {
+        "reason": "duplicate tool call ID in one model response",
+        "tool_call_id": "duplicate-id",
+    }
 
 
 def test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect(tmp_path):
