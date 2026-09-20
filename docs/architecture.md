@@ -76,10 +76,12 @@ OpenAI-compatible chat-completions endpoint with function schemas. No model SDK 
 An iteration is a model/planner call, not a tool call. Multiple tools returned in one iteration execute
 sequentially only when the whole batch fits within the turn's remaining tool-call budget. The batch is
 also preflighted for nonempty, unique call IDs and for conflicts with IDs seen earlier in the turn.
-Invalid batches are rejected before any of their tools run, which prevents one model response from
-causing partial side effects before an identity error is discovered. Text without tool calls ends the
-turn. Iteration exhaustion returns a guardrail reply and saves its trace. The defaults are six iterations
-and 12 tool calls; the constructor clamps overrides to 1–12 and 1–50 respectively.
+Serialized arguments are limited to 8 KiB per call so a model cannot put an unbounded payload into
+the trace or tool boundary. Invalid batches are rejected before any of their tools run, which prevents
+one model response from causing partial side effects before an identity or size error is discovered.
+Text without tool calls ends the turn. Iteration exhaustion returns a guardrail reply and saves its
+trace. The defaults are six iterations and 12 tool calls; the constructor clamps overrides to 1–12,
+1–50, and 256–65,536 argument bytes respectively.
 
 Within a turn, the loop keeps the result of each tool-call ID. If a provider repeats the same ID,
 tool name, and arguments, the loop appends a `deduplicate` event and returns the first observation
@@ -176,6 +178,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Endless tool requests stop | `test_iteration_guardrail_stops_endless_tool_calls` |
 | An oversized tool batch is rejected before side effects | `test_tool_call_budget_rejects_oversized_batch_before_side_effects` |
 | Duplicate IDs in one batch are rejected before side effects | `test_duplicate_ids_in_one_batch_are_rejected_before_side_effects` |
+| Oversized tool arguments reject the whole batch before side effects | `test_oversized_tool_arguments_reject_the_batch_before_side_effects` |
 | Provider failure after a write persists status, error, and partial-effect evidence | `test_failed_turn_is_persisted_with_partial_tool_effects` |
 | Duplicate tool-call IDs do not repeat side effects | `test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect` |
 | Existing SQLite turn ledgers migrate with completed status | `test_memory_migrates_existing_turn_ledgers` |

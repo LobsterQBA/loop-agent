@@ -117,6 +117,22 @@ class DuplicateIdsInOneBatchModel:
         )
 
 
+class OversizedToolArgumentsBatchModel:
+    name = "oversized-tool-arguments-batch"
+
+    def complete(self, messages, tools):
+        return ModelReply(
+            tool_calls=[
+                ToolCall("small-write", "remember", {"key": "first", "value": "one"}),
+                ToolCall(
+                    "large-write",
+                    "remember",
+                    {"key": "second", "value": "x" * 1_000},
+                ),
+            ]
+        )
+
+
 def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     agent = make_agent(tmp_path, model=EndlessModel(), max_iterations=2)
     turn = agent.run("keep going")
@@ -171,6 +187,28 @@ def test_duplicate_ids_in_one_batch_are_rejected_before_side_effects(tmp_path):
         "reason": "duplicate tool call ID in one model response",
         "tool_call_id": "duplicate-id",
     }
+
+
+def test_oversized_tool_arguments_reject_the_batch_before_side_effects(tmp_path):
+    memory = MemoryStore(tmp_path / "state.db")
+    agent = AgentSystem(
+        model=OversizedToolArgumentsBatchModel(),
+        tools=build_tools(memory),
+        memory=memory,
+        max_tool_argument_bytes=512,
+    )
+
+    with pytest.raises(AgentTurnError, match="arguments exceed 512 bytes") as raised:
+        agent.run("reject a batch with oversized arguments")
+
+    assert memory.recall() == []
+    assert raised.value.turn["tool_calls"] == 0
+    guardrail = raised.value.turn["trace"][-2]
+    assert guardrail["kind"] == "guardrail"
+    assert guardrail["title"] == "Tool arguments too large"
+    assert guardrail["detail"]["limit_bytes"] == 512
+    assert guardrail["detail"]["requested_bytes"] > 512
+    assert guardrail["detail"]["tool_call_id"] == "large-write"
 
 
 def test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect(tmp_path):

@@ -39,6 +39,7 @@ def test_local_api_runs_a_demo_turn(tmp_path):
             "max_message_chars": 2_000,
             "max_iterations": 6,
             "max_tool_calls": 12,
+            "max_tool_argument_bytes": 8_192,
         }
 
         status, turn = request_json(

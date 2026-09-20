@@ -16,6 +16,7 @@ The available tools are deliberately local and safe: arithmetic, time, remember,
 When the task is complete, answer clearly and briefly."""
 MAX_USER_MESSAGE_CHARS = 2_000
 DEFAULT_MAX_TOOL_CALLS = 12
+DEFAULT_MAX_TOOL_ARGUMENT_BYTES = 8_192
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,7 @@ class AgentSystem:
         mode: str = "demo",
         max_iterations: int = 6,
         max_tool_calls: int = DEFAULT_MAX_TOOL_CALLS,
+        max_tool_argument_bytes: int = DEFAULT_MAX_TOOL_ARGUMENT_BYTES,
     ):
         self.model = model
         self.tools = tools
@@ -77,6 +79,7 @@ class AgentSystem:
         self.mode = mode
         self.max_iterations = max(1, min(max_iterations, 12))
         self.max_tool_calls = max(1, min(max_tool_calls, 50))
+        self.max_tool_argument_bytes = max(256, min(max_tool_argument_bytes, 65_536))
 
     def run(self, user_message: str) -> AgentTurn:
         user_message = " ".join(user_message.strip().split())
@@ -164,6 +167,22 @@ class AgentSystem:
                     arguments_json = json.dumps(
                         call.arguments, ensure_ascii=False, sort_keys=True, separators=(",", ":")
                     )
+                    argument_bytes = len(arguments_json.encode("utf-8"))
+                    if argument_bytes > self.max_tool_argument_bytes:
+                        emit(
+                            "guardrail",
+                            "Tool arguments too large",
+                            {
+                                "limit_bytes": self.max_tool_argument_bytes,
+                                "requested_bytes": argument_bytes,
+                                "tool_call_id": call.id,
+                                "tool_name": call.name,
+                            },
+                        )
+                        raise RuntimeError(
+                            f"tool call {call.id!r} arguments exceed "
+                            f"{self.max_tool_argument_bytes} bytes"
+                        )
                     previous = tool_results_by_call_id.get(call.id)
                     if previous is not None:
                         previous_name, previous_arguments, _ = previous
