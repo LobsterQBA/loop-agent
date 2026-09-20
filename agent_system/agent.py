@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import time
 from dataclasses import asdict, dataclass
@@ -17,6 +18,7 @@ When the task is complete, answer clearly and briefly."""
 MAX_USER_MESSAGE_CHARS = 2_000
 DEFAULT_MAX_TOOL_CALLS = 12
 DEFAULT_MAX_TOOL_ARGUMENT_BYTES = 8_192
+DEFAULT_MAX_TOOL_OUTPUT_BYTES = 16_384
 
 
 @dataclass(frozen=True)
@@ -72,6 +74,7 @@ class AgentSystem:
         max_iterations: int = 6,
         max_tool_calls: int = DEFAULT_MAX_TOOL_CALLS,
         max_tool_argument_bytes: int = DEFAULT_MAX_TOOL_ARGUMENT_BYTES,
+        max_tool_output_bytes: int = DEFAULT_MAX_TOOL_OUTPUT_BYTES,
     ):
         self.model = model
         self.tools = tools
@@ -80,6 +83,7 @@ class AgentSystem:
         self.max_iterations = max(1, min(max_iterations, 12))
         self.max_tool_calls = max(1, min(max_tool_calls, 50))
         self.max_tool_argument_bytes = max(256, min(max_tool_argument_bytes, 65_536))
+        self.max_tool_output_bytes = max(256, min(max_tool_output_bytes, 262_144))
 
     def run(self, user_message: str) -> AgentTurn:
         user_message = " ".join(user_message.strip().split())
@@ -235,6 +239,29 @@ class AgentSystem:
                         )
                     else:
                         output = self.tools.execute(call.name, call.arguments)
+                        output_bytes = output.encode("utf-8")
+                        if len(output_bytes) > self.max_tool_output_bytes:
+                            output_digest = hashlib.sha256(output_bytes).hexdigest()
+                            emit(
+                                "guardrail",
+                                "Tool output too large",
+                                {
+                                    "limit_bytes": self.max_tool_output_bytes,
+                                    "original_bytes": len(output_bytes),
+                                    "sha256": output_digest,
+                                    "tool_call_id": call.id,
+                                    "tool_name": call.name,
+                                },
+                            )
+                            output = json.dumps(
+                                {
+                                    "ok": False,
+                                    "error": f"tool output exceeded {self.max_tool_output_bytes} bytes",
+                                    "original_bytes": len(output_bytes),
+                                    "sha256": output_digest,
+                                },
+                                separators=(",", ":"),
+                            )
                         tool_results_by_call_id[call.id] = (
                             call.name,
                             arguments_json,

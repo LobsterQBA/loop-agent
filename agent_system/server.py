@@ -94,6 +94,7 @@ class Application:
                 "max_iterations": self.demo.max_iterations,
                 "max_tool_calls": self.demo.max_tool_calls,
                 "max_tool_argument_bytes": self.demo.max_tool_argument_bytes,
+                "max_tool_output_bytes": self.demo.max_tool_output_bytes,
             },
         }
 

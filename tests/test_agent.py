@@ -133,6 +133,20 @@ class OversizedToolArgumentsBatchModel:
         )
 
 
+class OversizedToolOutputModel:
+    name = "oversized-tool-output"
+
+    def __init__(self):
+        self.tool_content = ""
+
+    def complete(self, messages, tools):
+        tool_messages = [message for message in messages if message.get("role") == "tool"]
+        if not tool_messages:
+            return ModelReply(tool_calls=[ToolCall("large-read", "large_output", {})])
+        self.tool_content = tool_messages[-1]["content"]
+        return ModelReply(text="Handled the bounded tool result.")
+
+
 def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     agent = make_agent(tmp_path, model=EndlessModel(), max_iterations=2)
     turn = agent.run("keep going")
@@ -209,6 +223,41 @@ def test_oversized_tool_arguments_reject_the_batch_before_side_effects(tmp_path)
     assert guardrail["detail"]["limit_bytes"] == 512
     assert guardrail["detail"]["requested_bytes"] > 512
     assert guardrail["detail"]["tool_call_id"] == "large-write"
+
+
+def test_oversized_tool_output_is_replaced_before_it_reaches_model_context(tmp_path):
+    memory = MemoryStore(tmp_path / "state.db")
+    tools = ToolRegistry()
+    tools.register(
+        Tool(
+            name="large_output",
+            description="Return a deliberately large test result.",
+            parameters={"type": "object", "properties": {}, "additionalProperties": False},
+            function=lambda: "x" * 1_000,
+        )
+    )
+    model = OversizedToolOutputModel()
+    agent = AgentSystem(
+        model=model,
+        tools=tools,
+        memory=memory,
+        max_tool_output_bytes=256,
+    )
+
+    turn = agent.run("bound the tool result")
+
+    assert turn.reply == "Handled the bounded tool result."
+    guardrail = next(event for event in turn.trace if event["kind"] == "guardrail")
+    assert guardrail["title"] == "Tool output too large"
+    assert guardrail["detail"]["limit_bytes"] == 256
+    assert guardrail["detail"]["original_bytes"] > 1_000
+    assert len(guardrail["detail"]["sha256"]) == 64
+    observation = next(event for event in turn.trace if event["kind"] == "observe")
+    assert observation["detail"]["ok"] is False
+    assert observation["detail"]["original_bytes"] == guardrail["detail"]["original_bytes"]
+    assert observation["detail"]["sha256"] == guardrail["detail"]["sha256"]
+    assert json.loads(model.tool_content) == observation["detail"]
+    assert "x" * 100 not in json.dumps(turn.to_dict())
 
 
 def test_duplicate_tool_call_id_reuses_result_without_repeating_side_effect(tmp_path):
