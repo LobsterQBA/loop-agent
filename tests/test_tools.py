@@ -4,7 +4,7 @@ import sqlite3
 import pytest
 
 from agent_system.memory import MemoryStore
-from agent_system.tools import build_tools, safe_calculate
+from agent_system.tools import Tool, ToolRegistry, build_tools, safe_calculate
 
 
 def test_calculator_handles_basic_arithmetic():
@@ -37,6 +37,44 @@ def test_tool_registry_surfaces_errors_as_data(tmp_path):
     output = json.loads(registry.execute("calculate", {"expression": "1 / 0"}))
     assert output["ok"] is False
     assert "ZeroDivisionError" in output["error"]
+
+
+@pytest.mark.parametrize(
+    ("arguments", "expected_error"),
+    [
+        ({}, "missing required field(s): value"),
+        ({"value": 7}, "field 'value' must be string"),
+        ({"value": "ok", "extra": True}, "unexpected field(s): extra"),
+    ],
+)
+def test_tool_registry_validates_schema_before_execution(arguments, expected_error):
+    executions = 0
+
+    def record(value):
+        nonlocal executions
+        executions += 1
+        return value
+
+    registry = ToolRegistry()
+    registry.register(
+        Tool(
+            name="record",
+            description="Record one string.",
+            parameters={
+                "type": "object",
+                "properties": {"value": {"type": "string"}},
+                "required": ["value"],
+                "additionalProperties": False,
+            },
+            function=record,
+        )
+    )
+
+    output = json.loads(registry.execute("record", arguments))
+
+    assert output["ok"] is False
+    assert expected_error in output["error"]
+    assert executions == 0
 
 
 def test_memory_is_durable(tmp_path):

@@ -165,7 +165,8 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 - The calculator allows a restricted AST and rejects calls, names, complex results, nonfinite results,
   and results beyond its numeric bound. This is not a general code sandbox or CPU budget.
 - Registered tool exceptions become `{ok: false, error: ...}` observations. Schemas describe inputs
-  to the model; this registry does not implement full JSON Schema validation.
+  to the model, and the registry enforces the object constraints used here: required fields,
+  primitive field types, and rejection of extra fields. It is not a full JSON Schema implementation.
 - In demo mode, a failed calculation prevents a follow-on result write. The live model is instructed
   to inspect results, but there is no equivalent general write-policy enforcement.
 - The server binds to `127.0.0.1`. It has no authentication, tenant isolation, or deployment hardening.
@@ -189,6 +190,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Existing SQLite turn ledgers migrate with completed status | `test_memory_migrates_existing_turn_ledgers` |
 | Completed and failed turns retain model provenance after reload | `test_local_api_runs_a_demo_turn`, `test_failed_agent_turn_returns_its_persisted_trace` |
 | Restricted arithmetic and tool errors | [test_tools.py](../tests/test_tools.py) |
+| Invalid tool arguments are rejected before the function runs | `test_tool_registry_validates_schema_before_execution` |
 | Input validation and local API | [test_server.py](../tests/test_server.py) |
 | Persisted traces can be reopened and unknown IDs return 404 | `test_local_api_runs_a_demo_turn`, `test_saved_turn_api_returns_not_found_for_unknown_or_invalid_id` |
 | Trace steps, timing, call-to-observation identity, terminal event, and outcome are checked | [test_evaluation.py](../tests/test_evaluation.py) |

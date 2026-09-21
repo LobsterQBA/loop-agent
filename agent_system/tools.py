@@ -55,12 +55,63 @@ class ToolRegistry:
         if tool is None:
             return json.dumps({"ok": False, "error": f"unknown tool: {name}"})
         try:
+            _validate_arguments(tool, arguments)
             value = tool.function(**arguments)
             return json.dumps({"ok": True, "result": value}, ensure_ascii=False)
         except Exception as exc:  # noqa: BLE001 - tool failures become model observations
             return json.dumps(
                 {"ok": False, "error": f"{type(exc).__name__}: {exc}"},
                 ensure_ascii=False,
+            )
+
+
+def _matches_json_type(value: Any, expected: str) -> bool:
+    if expected == "string":
+        return isinstance(value, str)
+    if expected == "number":
+        return isinstance(value, int | float) and not isinstance(value, bool)
+    if expected == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected == "boolean":
+        return isinstance(value, bool)
+    if expected == "object":
+        return isinstance(value, dict)
+    if expected == "array":
+        return isinstance(value, list)
+    if expected == "null":
+        return value is None
+    return True
+
+
+def _validate_arguments(tool: Tool, arguments: dict) -> None:
+    """Validate the object-schema constraints used by this registry's tools."""
+
+    parameters = tool.parameters
+    if parameters.get("type") != "object":
+        return
+    if not isinstance(arguments, dict):
+        raise TypeError(f"invalid arguments for {tool.name}: expected an object")
+
+    required = parameters.get("required", [])
+    missing = sorted(name for name in required if name not in arguments)
+    if missing:
+        raise ValueError(
+            f"invalid arguments for {tool.name}: missing required field(s): {', '.join(missing)}"
+        )
+
+    properties = parameters.get("properties", {})
+    if parameters.get("additionalProperties") is False:
+        unexpected = sorted(set(arguments) - set(properties))
+        if unexpected:
+            raise ValueError(
+                f"invalid arguments for {tool.name}: unexpected field(s): {', '.join(unexpected)}"
+            )
+
+    for field, value in arguments.items():
+        expected = properties.get(field, {}).get("type")
+        if isinstance(expected, str) and not _matches_json_type(value, expected):
+            raise ValueError(
+                f"invalid arguments for {tool.name}: field {field!r} must be {expected}"
             )
 
 
