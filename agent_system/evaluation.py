@@ -15,12 +15,11 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
     trace = turn.get("trace")
     events = trace if isinstance(trace, list) else []
     status = turn.get("status", "completed")
-    tool_calls = sum(
-        isinstance(event, dict) and event.get("kind") == "tool" for event in events
-    )
+    tool_calls = sum(isinstance(event, dict) and event.get("kind") == "tool" for event in events)
     observations = sum(
         isinstance(event, dict) and event.get("kind") == "observe" for event in events
     )
+    iterations = sum(isinstance(event, dict) and event.get("kind") == "reason" for event in events)
     pending_tool: tuple[object, object] | None = None
     tool_sequence_valid = True
     for event in events:
@@ -60,12 +59,21 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
         },
         {
             "name": "tool_observations",
-            "passed": tool_calls == observations
-            and tool_sequence_valid
-            and pending_tool is None,
+            "passed": tool_calls == observations and tool_sequence_valid and pending_tool is None,
             "detail": (
-                f"Recorded {tool_calls} tool call(s) and {observations} matched "
-                "observation(s)."
+                f"Recorded {tool_calls} tool call(s) and {observations} matched observation(s)."
+            ),
+        },
+        {
+            "name": "declared_counts",
+            "passed": type(turn.get("iterations")) is int
+            and turn.get("iterations") == iterations
+            and type(turn.get("tool_calls")) is int
+            and turn.get("tool_calls") == tool_calls,
+            "detail": (
+                f"Declared {turn.get('iterations')!r} iteration(s) and "
+                f"{turn.get('tool_calls')!r} tool call(s); trace recorded "
+                f"{iterations} and {tool_calls}."
             ),
         },
         {
@@ -87,6 +95,7 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
         "summary": {
             "checks_passed": passed,
             "checks_total": len(checks),
+            "iterations": iterations,
             "tool_calls": tool_calls,
             "observations": observations,
             "duration_ms": duration_ms,
