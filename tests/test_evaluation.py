@@ -5,6 +5,12 @@ def event(step, kind, elapsed_ms):
     return {"step": step, "kind": kind, "title": kind, "detail": {}, "elapsed_ms": elapsed_ms}
 
 
+def tool_event(step, kind, elapsed_ms, call_id="call-1", tool_name="calculate"):
+    value = event(step, kind, elapsed_ms)
+    value.update({"tool_call_id": call_id, "tool_name": tool_name})
+    return value
+
+
 def test_completed_trace_passes_all_integrity_checks():
     evaluation = evaluate_trace(
         {
@@ -15,8 +21,8 @@ def test_completed_trace_passes_all_integrity_checks():
             "trace": [
                 event(1, "input", 0),
                 event(2, "reason", 1),
-                event(3, "tool", 2),
-                event(4, "observe", 3),
+                tool_event(3, "tool", 2),
+                tool_event(4, "observe", 3),
                 event(5, "reply", 4),
                 event(6, "done", 5),
             ],
@@ -95,10 +101,8 @@ def test_equal_tool_and_observation_counts_do_not_hide_bad_ordering():
 
 
 def test_tool_observation_check_rejects_mismatched_call_identity():
-    tool = event(2, "tool", 1)
-    tool.update({"tool_call_id": "call-1", "tool_name": "calculate"})
-    observation = event(3, "observe", 2)
-    observation.update({"tool_call_id": "call-2", "tool_name": "calculate"})
+    tool = tool_event(2, "tool", 1)
+    observation = tool_event(3, "observe", 2, call_id="call-2")
     evaluation = evaluate_trace(
         {
             "status": "completed",
@@ -120,6 +124,28 @@ def test_tool_observation_check_rejects_mismatched_call_identity():
     assert tool_check["passed"] is False
 
 
+def test_tool_observation_check_rejects_missing_call_identity():
+    evaluation = evaluate_trace(
+        {
+            "status": "completed",
+            "reply": "done",
+            "iterations": 0,
+            "tool_calls": 1,
+            "trace": [
+                event(1, "input", 0),
+                event(2, "tool", 1),
+                event(3, "observe", 2),
+                event(4, "done", 3),
+            ],
+        }
+    )
+
+    tool_check = next(
+        check for check in evaluation["checks"] if check["name"] == "tool_observations"
+    )
+    assert tool_check["passed"] is False
+
+
 def test_declared_count_check_rejects_metadata_that_disagrees_with_trace():
     evaluation = evaluate_trace(
         {
@@ -130,8 +156,8 @@ def test_declared_count_check_rejects_metadata_that_disagrees_with_trace():
             "trace": [
                 event(1, "input", 0),
                 event(2, "reason", 1),
-                event(3, "tool", 2),
-                event(4, "observe", 3),
+                tool_event(3, "tool", 2),
+                tool_event(4, "observe", 3),
                 event(5, "reply", 4),
                 event(6, "done", 5),
             ],

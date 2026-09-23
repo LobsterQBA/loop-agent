@@ -6,6 +6,16 @@ from collections.abc import Mapping
 from typing import Any
 
 
+def _tool_identity(event: Mapping[str, Any]) -> tuple[str, str] | None:
+    call_id = event.get("tool_call_id")
+    tool_name = event.get("tool_name")
+    if not isinstance(call_id, str) or not call_id.strip():
+        return None
+    if not isinstance(tool_name, str) or not tool_name.strip():
+        return None
+    return call_id, tool_name
+
+
 def evaluate_trace(turn: Mapping[str, Any]) -> dict:
     """Evaluate whether a turn's execution trace is internally consistent.
 
@@ -20,24 +30,19 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
         isinstance(event, dict) and event.get("kind") == "observe" for event in events
     )
     iterations = sum(isinstance(event, dict) and event.get("kind") == "reason" for event in events)
-    pending_tool: tuple[object, object] | None = None
+    pending_tool: tuple[str, str] | None = None
     tool_sequence_valid = True
     for event in events:
         kind = event.get("kind") if isinstance(event, dict) else None
         if kind == "tool":
-            if pending_tool is not None:
+            identity = _tool_identity(event)
+            if pending_tool is not None or identity is None:
                 tool_sequence_valid = False
-            pending_tool = (event.get("tool_call_id"), event.get("tool_name"))
+            pending_tool = identity
         elif kind == "observe":
-            if pending_tool is None:
+            observation_tool = _tool_identity(event)
+            if pending_tool is None or observation_tool != pending_tool:
                 tool_sequence_valid = False
-            else:
-                observation_tool = (
-                    event.get("tool_call_id"),
-                    event.get("tool_name"),
-                )
-                if observation_tool != pending_tool:
-                    tool_sequence_valid = False
             pending_tool = None
 
     steps = [event.get("step") for event in events if isinstance(event, dict)]
@@ -61,7 +66,8 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
             "name": "tool_observations",
             "passed": tool_calls == observations and tool_sequence_valid and pending_tool is None,
             "detail": (
-                f"Recorded {tool_calls} tool call(s) and {observations} matched observation(s)."
+                f"Recorded {tool_calls} tool call(s) and {observations} observation(s) "
+                "with matching non-empty identities."
             ),
         },
         {

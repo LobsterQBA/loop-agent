@@ -86,7 +86,7 @@ The [walkthrough](docs/walkthrough.md) explains each step and includes troublesh
 | Part | What it does |
 | --- | --- |
 | [Agent loop](agent_system/agent.py) | Runs the steps, enforces planner, tool-call, argument-size, and output-size budgets, rejects ambiguous duplicate IDs within one model response, and safely reuses matching results across later iterations |
-| [Trace evaluation](agent_system/evaluation.py) | Runs deterministic integrity checks over the recorded steps, timing, tool observations, terminal event, and outcome |
+| [Trace evaluation](agent_system/evaluation.py) | Runs deterministic integrity checks over the recorded steps, timing, tool observations and their non-empty call identities, terminal event, and outcome |
 | [Tools](agent_system/tools.py) | Validate declared argument shapes, then calculate, remember a fact, recall saved facts, or get the current time |
 | [Memory](agent_system/memory.py) | Stores facts and run history, including model provenance, in a local SQLite database |
 | [Model adapters](agent_system/models.py) | Use fixed demo rules or an OpenAI-compatible model |
