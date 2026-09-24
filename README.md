@@ -95,9 +95,10 @@ The [walkthrough](docs/walkthrough.md) explains each step and includes troublesh
 Each task starts with fresh working messages; saved facts are available through the recall tool.
 The execution record shows tool calls and results after a run finishes, not private model reasoning.
 Persisted runs retain the planner/model name, so reopened evidence still identifies what produced it.
-Each returned run also reports whether its trace passed six deterministic integrity checks,
-including whether its declared iteration and tool-call counts match the events. This evaluates the
-evidence structure, not whether the model's answer was correct or useful.
+Each returned run also reports whether its trace passed seven deterministic integrity checks,
+including whether its lifecycle status is valid and its declared iteration and tool-call counts
+match the events. This evaluates the evidence structure, not whether the model's answer was correct
+or useful.
 If a provider or loop error aborts a run, the cockpit still shows and exports the persisted failed
 trace, including any earlier tool effects. The recent-run cards reopen completed and failed traces
 after a browser refresh or server restart.

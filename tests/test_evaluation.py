@@ -31,8 +31,8 @@ def test_completed_trace_passes_all_integrity_checks():
 
     assert evaluation["trace_integrity"] == "passed"
     assert evaluation["summary"] == {
-        "checks_passed": 6,
-        "checks_total": 6,
+        "checks_passed": 7,
+        "checks_total": 7,
         "iterations": 1,
         "tool_calls": 1,
         "observations": 1,
@@ -52,7 +52,7 @@ def test_evaluation_reports_each_trace_integrity_failure():
     )
 
     assert evaluation["trace_integrity"] == "failed"
-    assert evaluation["summary"]["checks_passed"] == 2
+    assert evaluation["summary"]["checks_passed"] == 3
     assert {check["name"] for check in evaluation["checks"] if not check["passed"]} == {
         "sequential_steps",
         "monotonic_timing",
@@ -75,6 +75,22 @@ def test_failed_trace_uses_error_as_its_terminal_outcome():
 
     assert evaluation["task_status"] == "failed"
     assert evaluation["trace_integrity"] == "passed"
+
+
+def test_unknown_turn_status_cannot_pass_integrity_checks():
+    evaluation = evaluate_trace(
+        {
+            "status": "running",
+            "reply": "done",
+            "iterations": 0,
+            "tool_calls": 0,
+            "trace": [event(1, "input", 0), event(2, "done", 1)],
+        }
+    )
+
+    status_check = next(check for check in evaluation["checks"] if check["name"] == "turn_status")
+    assert status_check["passed"] is False
+    assert evaluation["trace_integrity"] == "failed"
 
 
 def test_equal_tool_and_observation_counts_do_not_hide_bad_ordering():

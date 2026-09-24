@@ -193,7 +193,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Invalid tool arguments are rejected before the function runs | `test_tool_registry_validates_schema_before_execution` |
 | Input validation and local API | [test_server.py](../tests/test_server.py) |
 | Persisted traces can be reopened and unknown IDs return 404 | `test_local_api_runs_a_demo_turn`, `test_saved_turn_api_returns_not_found_for_unknown_or_invalid_id` |
-| Trace steps, timing, non-empty call-to-observation identity, terminal event, and outcome are checked | [test_evaluation.py](../tests/test_evaluation.py) |
+| Turn status, trace steps, timing, non-empty call-to-observation identity, terminal event, and outcome are checked | [test_evaluation.py](../tests/test_evaluation.py) |
 | Declared iteration and tool-call counts must match trace events | `test_declared_count_check_rejects_metadata_that_disagrees_with_trace` |
 
 CI runs on Python 3.11 and 3.12. Browser layout, accessibility, provider compatibility, model quality,
