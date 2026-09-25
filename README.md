@@ -35,8 +35,9 @@ The planner uses fixed rules in Demo mode or a model in Live mode. The loop stop
 six planner calls by default if it has not finished, and a separate 12-call tool budget
 prevents one model response from bypassing that limit with an oversized batch. Each tool
 call's serialized arguments are capped at 8 KiB before any tool in the batch executes. Tool
-results above 16 KiB are replaced with a bounded error and SHA-256 fingerprint before they enter
-the next model context or persisted trace.
+schemas also reject missing, extra, incorrectly typed, or out-of-range string arguments before
+execution. Tool results above 16 KiB are replaced with a bounded error and SHA-256 fingerprint
+before they enter the next model context or persisted trace.
 
 ## Three examples
 
@@ -87,7 +88,7 @@ The [walkthrough](docs/walkthrough.md) explains each step and includes troublesh
 | --- | --- |
 | [Agent loop](agent_system/agent.py) | Runs the steps, enforces planner, tool-call, argument-size, and output-size budgets, rejects ambiguous duplicate IDs within one model response, and safely reuses matching results across later iterations |
 | [Trace evaluation](agent_system/evaluation.py) | Runs deterministic integrity checks over the recorded steps, timing, tool observations and their non-empty call identities, terminal event, and outcome |
-| [Tools](agent_system/tools.py) | Validate declared argument shapes, then calculate, remember a fact, recall saved facts, or get the current time |
+| [Tools](agent_system/tools.py) | Validate declared argument shapes and string-length bounds, then calculate, remember a fact, recall saved facts, or get the current time |
 | [Memory](agent_system/memory.py) | Stores facts and run history, including model provenance, in a local SQLite database |
 | [Model adapters](agent_system/models.py) | Use fixed demo rules or an OpenAI-compatible model |
 | [Web interface](agent_system/static/index.html) | Shows the task, reply, saved facts, and expandable execution steps |
@@ -131,7 +132,8 @@ python -m agent_system.walkthrough
 ```
 
 The walkthrough checks calculation, saving, recall in a fresh process, and a failed calculation.
-The tests also cover loop, tool-call, argument-size, and tool-output budgets, tool-schema validation,
+The tests also cover loop, tool-call, argument-size, and tool-output budgets, tool-schema validation
+including declared string limits,
 duplicate IDs and retried tool calls, matching tool-call/observation identities, failure records,
 reopening saved traces, and HTTP input validation.
 

@@ -79,6 +79,8 @@ also preflighted for nonempty, unique call IDs and for conflicts with IDs seen e
 Serialized arguments are limited to 8 KiB per call so a model cannot put an unbounded payload into
 the trace or tool boundary. Invalid batches are rejected before any of their tools run, which prevents
 one model response from causing partial side effects before an identity or size error is discovered.
+At the registry boundary, each call is also checked against the tool's declared required fields,
+primitive types, extra-field policy, and string-length bounds before its function runs.
 Tool results are limited to 16 KiB before they enter the model context or persisted trace. An oversized
 result becomes a structured error with its original byte count and SHA-256 fingerprint, preserving
 bounded diagnostic evidence without retaining the payload. The tool has already executed at this
@@ -166,7 +168,8 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
   and results beyond its numeric bound. This is not a general code sandbox or CPU budget.
 - Registered tool exceptions become `{ok: false, error: ...}` observations. Schemas describe inputs
   to the model, and the registry enforces the object constraints used here: required fields,
-  primitive field types, and rejection of extra fields. It is not a full JSON Schema implementation.
+  primitive field types, rejection of extra fields, and declared string-length bounds. It is not a
+  full JSON Schema implementation.
 - In demo mode, a failed calculation prevents a follow-on result write. The live model is instructed
   to inspect results, but there is no equivalent general write-policy enforcement.
 - The server binds to `127.0.0.1`. It has no authentication, tenant isolation, or deployment hardening.
@@ -190,7 +193,7 @@ success and failure counts. Deterministic tests are not an LLM benchmark.
 | Existing SQLite turn ledgers migrate with completed status | `test_memory_migrates_existing_turn_ledgers` |
 | Completed and failed turns retain model provenance after reload | `test_local_api_runs_a_demo_turn`, `test_failed_agent_turn_returns_its_persisted_trace` |
 | Restricted arithmetic and tool errors | [test_tools.py](../tests/test_tools.py) |
-| Invalid tool arguments are rejected before the function runs | `test_tool_registry_validates_schema_before_execution` |
+| Invalid tool arguments and declared string-length violations are rejected before the function runs | `test_tool_registry_validates_schema_before_execution`, `test_built_in_tools_enforce_declared_string_limits_before_execution` |
 | Input validation and local API | [test_server.py](../tests/test_server.py) |
 | Persisted traces can be reopened and unknown IDs return 404 | `test_local_api_runs_a_demo_turn`, `test_saved_turn_api_returns_not_found_for_unknown_or_invalid_id` |
 | Turn status, trace steps, timing, non-empty call-to-observation identity, terminal event, and outcome are checked | [test_evaluation.py](../tests/test_evaluation.py) |

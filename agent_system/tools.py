@@ -108,11 +108,25 @@ def _validate_arguments(tool: Tool, arguments: dict) -> None:
             )
 
     for field, value in arguments.items():
-        expected = properties.get(field, {}).get("type")
+        property_schema = properties.get(field, {})
+        expected = property_schema.get("type")
         if isinstance(expected, str) and not _matches_json_type(value, expected):
             raise ValueError(
                 f"invalid arguments for {tool.name}: field {field!r} must be {expected}"
             )
+        if isinstance(value, str):
+            minimum = property_schema.get("minLength")
+            if isinstance(minimum, int) and len(value) < minimum:
+                raise ValueError(
+                    f"invalid arguments for {tool.name}: field {field!r} must have at least "
+                    f"{minimum} character(s)"
+                )
+            maximum = property_schema.get("maxLength")
+            if isinstance(maximum, int) and len(value) > maximum:
+                raise ValueError(
+                    f"invalid arguments for {tool.name}: field {field!r} must have at most "
+                    f"{maximum} character(s)"
+                )
 
 
 _BINARY_OPERATORS: dict[type[ast.operator], Callable[[float, float], float]] = {
@@ -169,7 +183,12 @@ def build_tools(memory: MemoryStore) -> ToolRegistry:
             parameters={
                 "type": "object",
                 "properties": {
-                    "expression": {"type": "string", "description": "Arithmetic expression"}
+                    "expression": {
+                        "type": "string",
+                        "description": "Arithmetic expression",
+                        "minLength": 1,
+                        "maxLength": 100,
+                    }
                 },
                 "required": ["expression"],
                 "additionalProperties": False,
@@ -192,8 +211,18 @@ def build_tools(memory: MemoryStore) -> ToolRegistry:
             parameters={
                 "type": "object",
                 "properties": {
-                    "key": {"type": "string", "description": "Short memory label"},
-                    "value": {"type": "string", "description": "Fact to remember"},
+                    "key": {
+                        "type": "string",
+                        "description": "Short memory label",
+                        "minLength": 1,
+                        "maxLength": 80,
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "Fact to remember",
+                        "minLength": 1,
+                        "maxLength": 500,
+                    },
                 },
                 "required": ["key", "value"],
                 "additionalProperties": False,
@@ -208,7 +237,11 @@ def build_tools(memory: MemoryStore) -> ToolRegistry:
             parameters={
                 "type": "object",
                 "properties": {
-                    "query": {"type": "string", "description": "Keyword or empty for recent"}
+                    "query": {
+                        "type": "string",
+                        "description": "Keyword or empty for recent",
+                        "maxLength": 80,
+                    }
                 },
                 "required": ["query"],
                 "additionalProperties": False,

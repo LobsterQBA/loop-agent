@@ -44,6 +44,8 @@ def test_tool_registry_surfaces_errors_as_data(tmp_path):
     [
         ({}, "missing required field(s): value"),
         ({"value": 7}, "field 'value' must be string"),
+        ({"value": ""}, "field 'value' must have at least 2 character(s)"),
+        ({"value": "too long"}, "field 'value' must have at most 5 character(s)"),
         ({"value": "ok", "extra": True}, "unexpected field(s): extra"),
     ],
 )
@@ -62,7 +64,7 @@ def test_tool_registry_validates_schema_before_execution(arguments, expected_err
             description="Record one string.",
             parameters={
                 "type": "object",
-                "properties": {"value": {"type": "string"}},
+                "properties": {"value": {"type": "string", "minLength": 2, "maxLength": 5}},
                 "required": ["value"],
                 "additionalProperties": False,
             },
@@ -75,6 +77,28 @@ def test_tool_registry_validates_schema_before_execution(arguments, expected_err
     assert output["ok"] is False
     assert expected_error in output["error"]
     assert executions == 0
+
+
+@pytest.mark.parametrize(
+    ("tool_name", "arguments", "expected_error"),
+    [
+        ("calculate", {"expression": "1" * 101}, "at most 100 character(s)"),
+        ("remember", {"key": "k" * 81, "value": "fact"}, "at most 80 character(s)"),
+        ("remember", {"key": "label", "value": "v" * 501}, "at most 500 character(s)"),
+        ("recall", {"query": "q" * 81}, "at most 80 character(s)"),
+    ],
+)
+def test_built_in_tools_enforce_declared_string_limits_before_execution(
+    tmp_path, tool_name, arguments, expected_error
+):
+    memory = MemoryStore(tmp_path / "state.db")
+    registry = build_tools(memory)
+
+    output = json.loads(registry.execute(tool_name, arguments))
+
+    assert output["ok"] is False
+    assert expected_error in output["error"]
+    assert memory.recall() == []
 
 
 def test_memory_is_durable(tmp_path):
