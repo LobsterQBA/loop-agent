@@ -77,6 +77,26 @@ def test_failed_trace_uses_error_as_its_terminal_outcome():
     assert evaluation["trace_integrity"] == "passed"
 
 
+def test_iteration_limit_is_incomplete_with_valid_trace():
+    evaluation = evaluate_trace(
+        {
+            "status": "incomplete",
+            "reply": "I reached the iteration limit before completing the task.",
+            "iterations": 1,
+            "tool_calls": 0,
+            "trace": [
+                event(1, "input", 0),
+                event(2, "reason", 1),
+                event(3, "guardrail", 2),
+                event(4, "done", 3),
+            ],
+        }
+    )
+
+    assert evaluation["task_status"] == "incomplete"
+    assert evaluation["trace_integrity"] == "passed"
+
+
 def test_unknown_turn_status_cannot_pass_integrity_checks():
     evaluation = evaluate_trace(
         {

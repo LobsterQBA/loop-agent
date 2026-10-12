@@ -47,7 +47,7 @@ function traceStep(event) {
       "The loop stopped a request that violated a configured safety limit or tool-call identity rule.",
     error:
       "The turn failed after this evidence was recorded. Earlier tool effects may still have happened.",
-    done: "This completed turn and its trace are stored in the local SQLite database.",
+    done: "This turn and its trace are stored in the local SQLite database. Check its status for the outcome.",
   };
   const explanation = document.createElement("p");
   explanation.className = "step-explanation";
@@ -143,7 +143,7 @@ async function loadSavedTurn(turnId) {
   replyText.textContent = turn.status === "failed" ? turn.error : turn.reply;
   renderTrace(turn.trace);
   document.querySelector("#turn-summary").textContent =
-    `${turn.status === "failed" ? "Failed turn" : "Saved turn"} ${turn.turn_id} · ${turn.mode} / ${turn.model} · ` +
+    `${turn.status.charAt(0).toUpperCase() + turn.status.slice(1)} turn ${turn.turn_id} · ${turn.mode} / ${turn.model} · ` +
     `${turn.iterations} planner/model calls · ${turn.tool_calls} tool call${turn.tool_calls === 1 ? "" : "s"}` +
     evaluationLabel(turn);
   document.querySelector("#download-trace").disabled = false;

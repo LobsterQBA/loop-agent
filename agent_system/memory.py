@@ -118,8 +118,8 @@ class MemoryStore:
         status: str = "completed",
         error: str | None = None,
     ) -> int:
-        if status not in {"completed", "failed"}:
-            raise ValueError("status must be completed or failed")
+        if status not in {"completed", "incomplete", "failed"}:
+            raise ValueError("status must be completed, incomplete, or failed")
         with self._connect() as conn:
             cursor = conn.execute(
                 """INSERT INTO turns

@@ -25,7 +25,7 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
     trace = turn.get("trace")
     events = trace if isinstance(trace, list) else []
     status = turn.get("status", "completed")
-    status_valid = status in {"completed", "failed"}
+    status_valid = status in {"completed", "incomplete", "failed"}
     tool_calls = sum(isinstance(event, dict) and event.get("kind") == "tool" for event in events)
     observations = sum(
         isinstance(event, dict) and event.get("kind") == "observe" for event in events
@@ -55,7 +55,7 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
         {
             "name": "turn_status",
             "passed": status_valid,
-            "detail": "Turn status is either 'completed' or 'failed'.",
+            "detail": "Turn status is 'completed', 'incomplete', or 'failed'.",
         },
         {
             "name": "sequential_steps",

@@ -76,7 +76,6 @@ def build_site(destination: Path) -> None:
         database = Path(folder) / "state.db"
         for message in MESSAGES:
             result = run_turn(database, message)
-            result["turn"]["status"] = "completed"
             result["turn"]["evaluation"] = evaluate_trace(result["turn"])
             turns.append({"id": result["turn"]["turn_id"]})
             examples.append({

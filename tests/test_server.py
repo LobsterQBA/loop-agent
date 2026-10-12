@@ -4,6 +4,7 @@ import urllib.error
 import urllib.request
 from importlib.metadata import version
 
+from agent_system.models import ModelReply, ToolCall
 from agent_system.server import create_server
 
 
@@ -23,6 +24,28 @@ class FailingModel:
 
     def complete(self, messages, tools):
         raise RuntimeError("provider disconnected")
+
+
+class EndlessModel:
+    name = "endless-test-model"
+
+    def complete(self, messages, tools):
+        return ModelReply(tool_calls=[ToolCall("loop", "current_time", {})])
+
+
+def test_application_preserves_incomplete_status(tmp_path):
+    from agent_system.server import Application
+
+    app = Application(home=tmp_path / "agent-home")
+    app.demo.model = EndlessModel()
+    app.demo.max_iterations = 1
+
+    turn = app.run("keep going", "demo")
+
+    assert turn["status"] == "incomplete"
+    assert turn["evaluation"]["task_status"] == "incomplete"
+    assert turn["evaluation"]["trace_integrity"] == "passed"
+    assert app.memory.turn(turn["turn_id"])["status"] == "incomplete"
 
 
 def test_local_api_runs_a_demo_turn(tmp_path):

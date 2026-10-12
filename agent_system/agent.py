@@ -31,6 +31,7 @@ class AgentTurn:
     mode: str
     model: str
     turn_id: int
+    status: str = "completed"
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -118,6 +119,7 @@ class AgentSystem:
         emit("input", "Turn started", user_message)
 
         reply = ""
+        status = "completed"
         iterations = 0
         try:
             for iteration in range(1, self.max_iterations + 1):
@@ -299,6 +301,7 @@ class AgentSystem:
                     )
             else:
                 reply = "I reached the iteration limit before completing the task."
+                status = "incomplete"
                 emit("guardrail", "Iteration limit reached", {"limit": self.max_iterations})
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
@@ -335,6 +338,7 @@ class AgentSystem:
             model=self.model.name,
             iterations=iterations,
             trace=trace,
+            status=status,
         )
         return AgentTurn(
             reply=reply,
@@ -344,4 +348,5 @@ class AgentSystem:
             mode=self.mode,
             model=self.model.name,
             turn_id=turn_id,
+            status=status,
         )

@@ -169,6 +169,8 @@ def test_iteration_guardrail_stops_endless_tool_calls(tmp_path):
     assert turn.iterations == 2
     assert turn.tool_calls == 2
     assert "iteration limit" in turn.reply.lower()
+    assert turn.status == "incomplete"
+    assert agent.memory.turn(turn.turn_id)["status"] == "incomplete"
     assert any(event["kind"] == "guardrail" for event in turn.trace)
 
 

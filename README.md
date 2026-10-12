@@ -104,7 +104,7 @@ including whether its lifecycle status is valid and its declared iteration and t
 match the events. This evaluates the evidence structure, not whether the model's answer was correct
 or useful.
 If a provider or loop error aborts a run, the cockpit still shows and exports the persisted failed
-trace, including any earlier tool effects. The recent-run cards reopen completed and failed traces
+trace, including any earlier tool effects. The recent-run cards reopen completed, incomplete, and failed traces
 after a browser refresh or server restart.
 
 ## Connect a model

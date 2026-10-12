@@ -78,7 +78,6 @@ class Application:
             raise ValueError(f"message must be at most {MAX_MESSAGE_CHARS} characters")
         agent = self.demo if mode == "demo" else self.live()
         turn = agent.run(message).to_dict()
-        turn["status"] = "completed"
         turn["evaluation"] = evaluate_trace(turn)
         return turn
 
