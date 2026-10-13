@@ -101,7 +101,9 @@ The execution record shows tool calls and results after a run finishes, not priv
 Persisted runs retain the planner/model name, so reopened evidence still identifies what produced it.
 Each returned run also reports whether its trace passed seven deterministic integrity checks,
 including whether its lifecycle status is valid and its declared iteration and tool-call counts
-match the events. This evaluates the evidence structure, not whether the model's answer was correct
+match the events. Each trace must contain exactly one terminal event, at the end: `error` for
+failed turns or `done` for completed and incomplete turns.
+This evaluates the evidence structure, not whether the model's answer was correct
 or useful.
 If a provider or loop error aborts a run, the cockpit still shows and exports the persisted failed
 trace, including any earlier tool effects. The recent-run cards reopen completed, incomplete, and failed traces

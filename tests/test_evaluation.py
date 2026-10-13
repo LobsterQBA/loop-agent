@@ -1,3 +1,5 @@
+import pytest
+
 from agent_system.evaluation import evaluate_trace
 
 
@@ -9,6 +11,37 @@ def tool_event(step, kind, elapsed_ms, call_id="call-1", tool_name="calculate"):
     value = event(step, kind, elapsed_ms)
     value.update({"tool_call_id": call_id, "tool_name": tool_name})
     return value
+
+
+@pytest.mark.parametrize(
+    "status,terminal", [("completed", "done"), ("incomplete", "done"), ("failed", "error")]
+)
+@pytest.mark.parametrize("earlier_terminal", ["done", "error"])
+def test_terminal_check_rejects_execution_after_an_earlier_terminal(
+    status, terminal, earlier_terminal
+):
+    evaluation = evaluate_trace(
+        {
+            "status": status,
+            "reply": "Recorded outcome",
+            "error": "Recorded failure" if status == "failed" else None,
+            "iterations": 1,
+            "tool_calls": 1,
+            "trace": [
+                event(1, "input", 0),
+                event(2, earlier_terminal, 1),
+                event(3, "reason", 2),
+                tool_event(4, "tool", 3),
+                tool_event(5, "observe", 4),
+                event(6, terminal, 5),
+            ],
+        }
+    )
+
+    assert evaluation["trace_integrity"] == "failed"
+    assert {check["name"] for check in evaluation["checks"] if not check["passed"]} == {
+        "terminal_event"
+    }
 
 
 def test_completed_trace_passes_all_integrity_checks():

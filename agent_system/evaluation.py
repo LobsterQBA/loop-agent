@@ -50,6 +50,9 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
     elapsed = [event.get("elapsed_ms") for event in events if isinstance(event, dict)]
     expected_terminal = "error" if status == "failed" else "done"
     actual_terminal = events[-1].get("kind") if events and isinstance(events[-1], dict) else None
+    terminal_count = sum(
+        isinstance(event, dict) and event.get("kind") in ("done", "error") for event in events
+    )
 
     checks = [
         {
@@ -90,8 +93,11 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
         },
         {
             "name": "terminal_event",
-            "passed": actual_terminal == expected_terminal,
-            "detail": f"A {status} turn must end with a {expected_terminal!r} event.",
+            "passed": actual_terminal == expected_terminal and terminal_count == 1,
+            "detail": (
+                f"A {status} turn must have exactly one terminal event, "
+                f"a final {expected_terminal!r}; recorded {terminal_count} terminal event(s)."
+            ),
         },
         {
             "name": "outcome_recorded",
