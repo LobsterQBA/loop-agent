@@ -183,7 +183,11 @@ class LiveModel:
             tool_choice="auto",
             temperature=0,
         )
-        message = response.choices[0].message
+        choice = response.choices[0]
+        # A truncated or filtered response is not a usable final answer or tool batch.
+        if choice.finish_reason in {"length", "content_filter"}:
+            raise RuntimeError(f"model response incomplete: finish_reason={choice.finish_reason}")
+        message = choice.message
         calls = []
         for call in message.tool_calls or []:
             arguments = _parse_tool_arguments(
