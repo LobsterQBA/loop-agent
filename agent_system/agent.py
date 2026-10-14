@@ -303,7 +303,7 @@ class AgentSystem:
                 reply = "I reached the iteration limit before completing the task."
                 status = "incomplete"
                 emit("guardrail", "Iteration limit reached", {"limit": self.max_iterations})
-        except Exception as exc:
+        except (Exception, KeyboardInterrupt) as exc:
             error = f"{type(exc).__name__}: {exc}"
             emit("error", "Turn failed", {"error": error})
             turn_id = self.memory.record_turn(
@@ -316,6 +316,9 @@ class AgentSystem:
                 status="failed",
                 error=error,
             )
+            # Keep interruption semantics while retaining any partial tool effects.
+            if isinstance(exc, KeyboardInterrupt):
+                raise
             raise AgentTurnError(
                 error,
                 trace=trace,

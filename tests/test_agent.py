@@ -400,3 +400,34 @@ def test_failed_calculation_does_not_write_memory(tmp_path, prior_value):
     assert observations[0]["ok"] is False
     assert "ZeroDivisionError" in observations[0]["error"]
     assert agent.memory.recent_turns()[0]["reply"] == turn.reply
+
+
+@pytest.mark.parametrize("after_write", [False, True])
+def test_keyboard_interrupt_is_persisted_and_propagated(tmp_path, after_write):
+    interruption = KeyboardInterrupt()
+
+    class InterruptedModel:
+        name = "interrupted-model"
+
+        def complete(self, messages, tools):
+            if after_write and not any(m.get("role") == "tool" for m in messages):
+                return ModelReply(
+                    tool_calls=[ToolCall("write", "remember", {"key": "partial", "value": "saved"})]
+                )
+            raise interruption
+
+    agent = make_agent(tmp_path, model=InterruptedModel())
+    with pytest.raises(KeyboardInterrupt) as raised:
+        agent.run("interrupt this turn")
+
+    assert raised.value is interruption
+    turns = agent.memory.recent_turns()
+    assert len(turns) == 1
+    turn = agent.memory.turn(turns[0]["id"])
+    assert turn["status"] == "failed"
+    assert turn["error"] == "KeyboardInterrupt: "
+    assert turn["reply"] == ""
+    assert turn["iterations"] == (2 if after_write else 1)
+    assert turn["tool_calls"] == int(after_write)
+    assert turn["trace"][-1]["kind"] == "error"
+    assert bool(agent.memory.recall("partial")) is after_write
