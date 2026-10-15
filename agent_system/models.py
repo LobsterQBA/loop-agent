@@ -33,8 +33,18 @@ class Model(Protocol):
 
 
 def _parse_tool_arguments(*, call_id: str, tool_name: str, raw_arguments: str | None) -> dict:
+    def unique_object(pairs: list[tuple[str, object]]) -> dict:
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(
+                    f"tool call {call_id!r} for {tool_name!r} returned duplicate JSON object fields"
+                )
+            result[key] = value
+        return result
+
     try:
-        arguments = json.loads(raw_arguments or "{}")
+        arguments = json.loads(raw_arguments or "{}", object_pairs_hook=unique_object)
     except json.JSONDecodeError as exc:
         raise ValueError(
             f"tool call {call_id!r} for {tool_name!r} returned invalid JSON arguments"

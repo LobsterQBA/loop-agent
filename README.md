@@ -36,7 +36,8 @@ six planner calls by default if it has not finished, and a separate 12-call tool
 prevents one model response from bypassing that limit with an oversized batch. Each tool
 call's serialized arguments are capped at 8 KiB before any tool in the batch executes. Tool
 schemas also reject missing, extra, incorrectly typed, or out-of-range string arguments before
-execution. Live-provider tool arguments must decode as a JSON object; malformed payloads fail the
+execution. Live-provider tool arguments must decode as a JSON object with unique field names (including
+nested objects); malformed or ambiguous payloads fail the
 turn instead of being rewritten into an executable empty argument set. Tool results above 16 KiB
 are replaced with a bounded error and SHA-256 fingerprint before they enter the next model context
 or persisted trace. Model reply text above 32 KiB fails the turn before tool execution or trace

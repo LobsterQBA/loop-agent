@@ -85,3 +85,43 @@ def test_live_model_accepts_normal_final_response():
     choice.message.tool_calls = []
 
     assert model.complete([], []).text == "Complete answer"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        '{"key":"approved","value":"fact","key":"overwritten"}',
+        '{"value":{"secret":"first","secret":"do-not-log"}}',
+        '{"key":"same","key":"same"}',
+    ],
+)
+def test_live_model_rejects_duplicate_argument_fields_without_echoing_payload(arguments):
+    with pytest.raises(ValueError, match="duplicate JSON object fields") as raised:
+        fake_live_model(arguments).complete([], [])
+
+    assert "do-not-log" not in str(raised.value)
+    assert "overwritten" not in str(raised.value)
+
+
+def test_duplicate_fields_reject_entire_batch_before_memory_writes(tmp_path):
+    model = fake_live_model('{"key":"first","value":"must not save"}')
+    calls = model.client.chat.completions.response.choices[0].message.tool_calls
+    calls[0].function.name = "remember"
+    calls.append(SimpleNamespace(
+        id="call-2",
+        function=SimpleNamespace(
+            name="remember",
+            arguments='{"key":"approved","value":"fact","key":"overwritten"}',
+        ),
+    ))
+    memory = MemoryStore(tmp_path / "state.db")
+    agent = AgentSystem(model=model, tools=build_tools(memory), memory=memory)
+
+    with pytest.raises(AgentTurnError, match="duplicate JSON object fields") as raised:
+        agent.run("Remember these facts")
+
+    assert memory.recall() == []
+    turn = memory.turn(raised.value.turn["turn_id"])
+    assert turn["status"] == "failed"
+    assert turn["tool_calls"] == 0
+    assert turn["trace"][-1]["kind"] == "error"
