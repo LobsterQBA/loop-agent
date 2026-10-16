@@ -134,7 +134,13 @@ class DemoModel:
 
         if wants_recall and "recall" not in results:
             query = re.sub(
-                r".*?(?:about|for|记得|关于)\s*", "", user_message, flags=re.IGNORECASE
+                r"^(?:please\s+)?(?:what do you remember|recall|memory)\b\s*",
+                "",
+                user_message,
+                flags=re.IGNORECASE,
+            )
+            query = re.sub(
+                r".*?(?:\babout\b|\bfor\b|记得|关于)\s*", "", query, flags=re.IGNORECASE
             ).strip(" ?.!")
             return _tool_call("recall", query=query if len(query) < 80 else "")
 

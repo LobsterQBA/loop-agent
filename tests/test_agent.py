@@ -50,6 +50,18 @@ def test_demo_agent_recalls_saved_memory(tmp_path):
     assert "Keep LinkedIn posts concise" in turn.reply
 
 
+@pytest.mark.parametrize("prompt", ["What do you remember?", "Recall", "Recall launch score"])
+def test_demo_recall_without_about_prefix(tmp_path, prompt):
+    agent = make_agent(tmp_path)
+    agent.memory.remember("launch score", "391")
+    agent.memory.remember("other fact", "unrelated")
+    turn = agent.run(prompt)
+
+    assert "launch score = 391" in turn.reply
+    assert ("other fact = unrelated" in turn.reply) == (prompt != "Recall launch score")
+    assert turn.tool_calls == 1
+
+
 class EndlessModel:
     name = "endless-test-model"
 
