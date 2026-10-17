@@ -75,7 +75,7 @@ def _tool_results(messages: list[dict]) -> dict[str, list[dict]]:
 
 def _arithmetic_expression(text: str) -> str | None:
     normalized = text.replace("×", "*").replace("÷", "/")
-    candidates = re.findall(r"(?<![\w.])[-+]?\d[\d\s.+\-*/%()]{1,60}", normalized)
+    candidates = re.findall(r"(?<![\w.])[-+(\s]*\d[\d\s.+\-*/%()]{1,60}", normalized)
     candidates = [candidate.strip().rstrip(".,?!") for candidate in candidates]
     candidates = [candidate for candidate in candidates if re.search(r"[+\-*/%]", candidate)]
     return max(candidates, key=len) if candidates else None

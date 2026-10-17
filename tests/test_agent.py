@@ -41,6 +41,22 @@ def test_demo_agent_chains_calculate_and_remember(tmp_path):
     ]
 
 
+@pytest.mark.parametrize(
+    ("expression", "expected"),
+    [("(2 + 3) * 4", "20"), ("( 2 + 3 ) × 4", "20"), ("((2 + 3) * 4) / 2", "10.0")],
+)
+def test_demo_calculates_and_saves_parenthesized_expressions(tmp_path, expression, expected):
+    agent = make_agent(tmp_path)
+
+    turn = agent.run(f"Calculate {expression} and remember the result as grouped total.")
+
+    assert f"Saved “grouped total” = {expected}." in turn.reply
+    assert agent.memory.recall("grouped total")[0]["value"] == expected
+    assert turn.tool_calls == 2
+    calculation = next(event for event in turn.trace if event["kind"] == "tool")
+    assert calculation["detail"]["expression"] == expression.replace("×", "*")
+
+
 def test_demo_agent_recalls_saved_memory(tmp_path):
     agent = make_agent(tmp_path)
     agent.memory.remember("posting preference", "Keep LinkedIn posts concise")
