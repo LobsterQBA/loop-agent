@@ -157,8 +157,16 @@ class AgentHandler(BaseHTTPRequestHandler):
             return
         if path.startswith("/api/turns/"):
             raw_turn_id = path.removeprefix("/api/turns/")
-            if raw_turn_id.isdigit():
-                turn = self.app.memory.turn(int(raw_turn_id))
+            # SQLite row IDs are signed 64-bit integers. Bound the decimal text
+            # before conversion so oversized IDs also avoid Python's digit limit.
+            normalized_id = raw_turn_id.lstrip("0") or "0"
+            if (
+                raw_turn_id.isascii()
+                and raw_turn_id.isdigit()
+                and len(normalized_id) <= 19
+                and int(normalized_id) <= 2**63 - 1
+            ):
+                turn = self.app.memory.turn(int(normalized_id))
                 if turn is not None:
                     turn["evaluation"] = evaluate_trace(turn)
                     self._json(turn)
