@@ -85,6 +85,10 @@ def test_local_api_runs_a_demo_turn(tmp_path):
         assert saved_turn["trace"] == turn["trace"]
         assert saved_turn["tool_calls"] == 1
         assert saved_turn["evaluation"]["trace_integrity"] == "passed"
+
+        status, padded_turn = request_json(f"{base}/api/turns/000{turn['turn_id']}")
+        assert status == 200
+        assert padded_turn["turn_id"] == turn["turn_id"]
     finally:
         server.shutdown()
         server.server_close()
@@ -97,7 +101,8 @@ def test_saved_turn_api_returns_not_found_for_unknown_or_invalid_id(tmp_path):
     thread.start()
     base = f"http://127.0.0.1:{server.server_port}"
     try:
-        for path in ["/api/turns/999", "/api/turns/not-an-id"]:
+        for raw_id in ["999", "not-an-id", "", "-1", str(2**63 - 1), str(2**63), "9" * 5000]:
+            path = f"/api/turns/{raw_id}"
             try:
                 request_json(f"{base}{path}")
             except urllib.error.HTTPError as exc:
