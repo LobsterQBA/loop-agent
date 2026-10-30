@@ -141,7 +141,9 @@ The walkthrough checks calculation, saving, recall in a fresh process, and a fai
 The tests also cover loop, tool-call, argument-size, tool-output, and model-reply budgets, provider
 tool-argument parsing, tool-schema validation including declared string limits,
 duplicate IDs and retried tool calls, matching tool-call/observation identities, failure records,
-reopening saved traces, and HTTP input validation.
+reopening saved traces, and HTTP input validation. Messages containing isolated Unicode
+surrogates are rejected before model or tool execution; valid multilingual text and emoji
+remain supported.
 
 ## Limits and further reading
 

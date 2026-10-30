@@ -96,6 +96,13 @@ class AgentSystem:
         if len(user_message) > MAX_USER_MESSAGE_CHARS:
             raise ValueError(f"message must be at most {MAX_USER_MESSAGE_CHARS} characters")
 
+        # JSON escapes can decode to isolated surrogates that SQLite cannot store.
+        # Reject them before any model call or durable tool effect.
+        try:
+            user_message.encode("utf-8")
+        except UnicodeEncodeError as exc:
+            raise ValueError("message must contain valid Unicode") from exc
+
         started = time.perf_counter()
         trace: list[dict] = []
         tool_call_count = 0

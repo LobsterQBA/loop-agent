@@ -247,3 +247,34 @@ def test_run_rejects_invalid_content_length_without_leaking_parser_error(tmp_pat
         server.shutdown()
         server.server_close()
         thread.join(timeout=3)
+
+
+def test_run_rejects_surrogates_and_preserves_valid_unicode(tmp_path):
+    server = create_server(port=0, home=tmp_path / "agent-home")
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        for message in ["hello \ud800", "hello \udfff"]:
+            try:
+                request_json(f"{base}/api/run", payload={"message": message})
+            except urllib.error.HTTPError as exc:
+                assert exc.code == 400
+                assert json.loads(exc.read()) == {"error": "message must contain valid Unicode"}
+            else:
+                raise AssertionError("isolated surrogates should return HTTP 400")
+        assert server.app.memory.recent_turns() == []
+        assert server.app.memory.recall() == []
+
+        # json.dumps escapes the emoji as a valid surrogate pair on the wire.
+        message = "你好 🚀"
+        status, turn = request_json(f"{base}/api/run", payload={"message": message})
+        assert status == 200
+        status, saved = request_json(f"{base}/api/turns/{turn['turn_id']}")
+        assert status == 200
+        assert saved["user_message"] == message
+        assert saved["trace"][0]["detail"] == message
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)

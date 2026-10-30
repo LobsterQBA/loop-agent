@@ -459,3 +459,24 @@ def test_keyboard_interrupt_is_persisted_and_propagated(tmp_path, after_write):
     assert turn["tool_calls"] == int(after_write)
     assert turn["trace"][-1]["kind"] == "error"
     assert bool(agent.memory.recall("partial")) is after_write
+
+
+@pytest.mark.parametrize("codepoint", [0xD800, 0xDFFF])
+def test_invalid_unicode_message_is_rejected_before_model_call(tmp_path, codepoint):
+    message = "hello " + chr(codepoint)
+
+    class CountingModel:
+        name = "counting-model"
+        calls = 0
+
+        def complete(self, messages, tools):
+            self.calls += 1
+            return ModelReply(text="done")
+
+    model = CountingModel()
+    agent = make_agent(tmp_path, model=model)
+    with pytest.raises(ValueError, match="message must contain valid Unicode"):
+        agent.run(message)
+    assert model.calls == 0
+    assert agent.memory.recent_turns() == []
+    assert agent.memory.recall() == []
