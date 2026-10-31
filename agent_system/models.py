@@ -75,7 +75,9 @@ def _tool_results(messages: list[dict]) -> dict[str, list[dict]]:
 
 def _arithmetic_expression(text: str) -> str | None:
     normalized = text.replace("×", "*").replace("÷", "/")
-    candidates = re.findall(r"(?<![\w.])[-+(\s]*\d[\d\s.+\-*/%()]{1,60}", normalized)
+    # Keep the whole candidate: truncation can turn an oversized expression into
+    # a valid prefix with a different result. The calculator enforces its limit.
+    candidates = re.findall(r"(?<![\w.])[-+(\s]*\d[\d\s.+\-*/%()]+", normalized)
     candidates = [candidate.strip().rstrip(".,?!") for candidate in candidates]
     candidates = [candidate for candidate in candidates if re.search(r"[+\-*/%]", candidate)]
     return max(candidates, key=len) if candidates else None

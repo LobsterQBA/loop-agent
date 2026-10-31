@@ -143,7 +143,8 @@ tool-argument parsing, tool-schema validation including declared string limits,
 duplicate IDs and retried tool calls, matching tool-call/observation identities, failure records,
 reopening saved traces, and HTTP input validation. Messages containing isolated Unicode
 surrogates are rejected before model or tool execution; valid multilingual text and emoji
-remain supported.
+remain supported. Demo calculations retain the full extracted expression: expressions beyond
+the calculator's 100-character limit return an error without saving a partial result.
 
 ## Limits and further reading
 

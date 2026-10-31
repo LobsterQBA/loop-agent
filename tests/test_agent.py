@@ -480,3 +480,28 @@ def test_invalid_unicode_message_is_rejected_before_model_call(tmp_path, codepoi
     assert model.calls == 0
     assert agent.memory.recent_turns() == []
     assert agent.memory.recall() == []
+
+
+@pytest.mark.parametrize("terms", [32, 40, 50])
+def test_demo_calculates_full_expression_beyond_old_extraction_limit(tmp_path, terms):
+    agent = make_agent(tmp_path)
+    expression = "+".join(["1"] * terms)
+
+    turn = agent.run(f"Calculate {expression} and save as total.")
+
+    assert agent.memory.recall("total")[0]["value"] == str(terms)
+    calculation = next(event for event in turn.trace if event["kind"] == "tool")
+    assert calculation["detail"]["expression"] == expression
+
+
+def test_demo_rejects_oversized_expression_without_saving_a_partial_result(tmp_path):
+    agent = make_agent(tmp_path)
+    agent.memory.remember("total", "previous correct result")
+    expression = "+".join(["1"] * 51)
+
+    turn = agent.run(f"Calculate {expression} and save as total.")
+
+    assert "did not save" in turn.reply
+    assert turn.tool_calls == 1
+    assert agent.memory.recall("total")[0]["value"] == "previous correct result"
+    assert "at most 100" in turn.reply
