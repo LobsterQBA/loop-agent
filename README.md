@@ -35,6 +35,8 @@ The planner uses fixed rules in Demo mode or a model in Live mode. The loop stop
 six planner calls by default if it has not finished, and a separate 12-call tool budget
 prevents one model response from bypassing that limit with an oversized batch. Each tool
 call's serialized arguments are capped at 8 KiB before any tool in the batch executes. Tool
+call IDs and names must contain valid Unicode; an invalid identifier rejects the entire batch
+before tool effects and leaves a readable failed trace. Tool
 schemas also reject missing, extra, incorrectly typed, or out-of-range string arguments before
 execution. Live-provider tool arguments must decode as a JSON object with unique field names (including
 nested objects); malformed or ambiguous payloads fail the

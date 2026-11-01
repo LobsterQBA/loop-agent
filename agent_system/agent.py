@@ -179,6 +179,15 @@ class AgentSystem:
                             {"reason": "tool call IDs must be non-empty strings"},
                         )
                         raise RuntimeError("tool call IDs must be non-empty strings")
+                    # Validate all identifiers before executing any tool in the batch.
+                    # Isolated surrogates would otherwise break failed-trace persistence.
+                    try:
+                        call.id.encode("utf-8")
+                        call.name.encode("utf-8")
+                    except UnicodeEncodeError as exc:
+                        raise RuntimeError(
+                            "tool call identifiers must contain valid Unicode"
+                        ) from exc
                     if call.id in batch_call_ids:
                         emit(
                             "guardrail",

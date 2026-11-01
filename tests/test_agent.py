@@ -505,3 +505,79 @@ def test_demo_rejects_oversized_expression_without_saving_a_partial_result(tmp_p
     assert turn.tool_calls == 1
     assert agent.memory.recall("total")[0]["value"] == "previous correct result"
     assert "at most 100" in turn.reply
+
+
+@pytest.mark.parametrize("field", ["id", "name"])
+@pytest.mark.parametrize("codepoint", [0xD800, 0xDFFF])
+@pytest.mark.parametrize("after_write", [False, True])
+def test_invalid_unicode_tool_identifiers_reject_batch_and_preserve_trace(
+    tmp_path, field, codepoint, after_write
+):
+    class InvalidIdentifierModel:
+        name = "invalid-identifier-model"
+
+        def complete(self, messages, tools):
+            if after_write and not any(m.get("role") == "tool" for m in messages):
+                return ModelReply(
+                    tool_calls=[ToolCall("prior", "remember", {"key": "prior", "value": "saved"})]
+                )
+            invalid_call = ToolCall(
+                chr(codepoint) if field == "id" else "invalid",
+                chr(codepoint) if field == "name" else "remember",
+                {"key": "invalid", "value": "must not be saved"},
+            )
+            return ModelReply(
+                tool_calls=[
+                    ToolCall("valid", "remember", {"key": "batch", "value": "must not be saved"}),
+                    invalid_call,
+                ]
+            )
+
+    agent = make_agent(tmp_path, model=InvalidIdentifierModel())
+    with pytest.raises(
+        AgentTurnError, match="tool call identifiers must contain valid Unicode"
+    ) as raised:
+        agent.run("validate the entire batch before executing it")
+
+    turn = agent.memory.turn(raised.value.turn["turn_id"])
+    assert turn["status"] == "failed"
+    assert turn["tool_calls"] == int(after_write)
+    assert turn["trace"][-1]["kind"] == "error"
+    assert agent.memory.recall("batch") == []
+    assert agent.memory.recall("invalid") == []
+    assert bool(agent.memory.recall("prior")) is after_write
+    json.dumps(turn, ensure_ascii=False).encode("utf-8")
+
+
+def test_valid_unicode_tool_identifiers_execute_and_round_trip(tmp_path):
+    class UnicodeIdentifierModel:
+        name = "unicode-identifier-model"
+
+        def complete(self, messages, tools):
+            if any(m.get("role") == "tool" for m in messages):
+                return ModelReply(text="Saved.")
+            return ModelReply(
+                tool_calls=[ToolCall("调用-🦞", "记住", {"key": "事实", "value": "好"})]
+            )
+
+    memory = MemoryStore(tmp_path / "state.db")
+    tools = ToolRegistry()
+    tools.register(
+        Tool(
+            name="记住",
+            description="Save a fact.",
+            parameters={"type": "object"},
+            function=memory.remember,
+        )
+    )
+    agent = AgentSystem(model=UnicodeIdentifierModel(), tools=tools, memory=memory)
+
+    turn = agent.run("save a fact")
+
+    assert turn.status == "completed"
+    assert memory.recall("事实")[0]["value"] == "好"
+    saved = memory.turn(turn.turn_id)
+    event = next(e for e in saved["trace"] if e["kind"] == "tool")
+    assert event["tool_call_id"] == "调用-🦞"
+    assert event["tool_name"] == "记住"
+    json.dumps(saved, ensure_ascii=False).encode("utf-8")
