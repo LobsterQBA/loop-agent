@@ -112,6 +112,12 @@ class DemoModel:
             phrase in lower for phrase in ("what time", "current time", "几点", "时间")
         )
 
+        # Memory requests treat dates, identifiers, and formulas as literal text.
+        # Combining memory with arithmetic requires an explicit calculation cue.
+        wants_calculation = bool(re.search(r"\b(?:calculate|compute)\b|计算", lower))
+        if (wants_memory or wants_recall) and not wants_calculation:
+            expression = None
+
         if expression and "calculate" not in results:
             return _tool_call("calculate", expression=expression)
 

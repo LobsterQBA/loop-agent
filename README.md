@@ -85,7 +85,11 @@ Open [localhost:8787](http://127.0.0.1:8787) and try the three examples:
    and run the recall example. It retrieves `launch score: 391` from SQLite.
 3. **Try a failure:** division by zero returns an error without saving an invalid result.
 
-Demo mode follows a few fixed rules. Live mode connects an LLM to the same tools.
+Demo mode follows a few fixed rules. Memory requests preserve dates, IDs, and formulas
+as text: `Remember that the launch date is 2026-11-02` saves the fact without calculating.
+To calculate and save a result, explicitly say `Calculate`, `Compute`, or `计算`, for example
+`Calculate 2 + 3 and save as total`. Standalone arithmetic such as `2 + 3` still works.
+Live mode connects an LLM to the same tools.
 The [walkthrough](docs/walkthrough.md) explains each step and includes troubleshooting.
 
 ## Where to find the code
