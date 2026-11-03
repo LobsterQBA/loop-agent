@@ -320,7 +320,12 @@ class AgentSystem:
                 status = "incomplete"
                 emit("guardrail", "Iteration limit reached", {"limit": self.max_iterations})
         except (Exception, KeyboardInterrupt) as exc:
-            error = f"{type(exc).__name__}: {exc}"
+            # Provider exceptions can contain isolated surrogates. Preserve their
+            # code points as readable escapes so recording the failure cannot
+            # mask the original error (or interruption) with a SQLite encode error.
+            error = f"{type(exc).__name__}: {exc}".encode(
+                "utf-8", errors="backslashreplace"
+            ).decode("utf-8")
             emit("error", "Turn failed", {"error": error})
             turn_id = self.memory.record_turn(
                 user_message=user_message,
