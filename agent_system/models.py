@@ -7,6 +7,7 @@ LiveModel is optional and uses an OpenAI-compatible chat-completions endpoint.
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import dataclass, field
 from typing import Protocol
@@ -33,6 +34,14 @@ class Model(Protocol):
 
 
 def _parse_tool_arguments(*, call_id: str, tool_name: str, raw_arguments: str | None) -> dict:
+    def finite_number(raw: str) -> float:
+        value = float(raw)
+        if not math.isfinite(value):
+            raise ValueError(
+                f"tool call {call_id!r} for {tool_name!r} returned non-finite JSON numbers"
+            )
+        return value
+
     def unique_object(pairs: list[tuple[str, object]]) -> dict:
         result = {}
         for key, value in pairs:
@@ -44,7 +53,14 @@ def _parse_tool_arguments(*, call_id: str, tool_name: str, raw_arguments: str | 
         return result
 
     try:
-        arguments = json.loads(raw_arguments or "{}", object_pairs_hook=unique_object)
+        # Check tokens during decoding, including nested values and exponents
+        # that overflow float, before any call in this response can execute.
+        arguments = json.loads(
+            raw_arguments or "{}",
+            object_pairs_hook=unique_object,
+            parse_constant=finite_number,
+            parse_float=finite_number,
+        )
     except json.JSONDecodeError as exc:
         raise ValueError(
             f"tool call {call_id!r} for {tool_name!r} returned invalid JSON arguments"

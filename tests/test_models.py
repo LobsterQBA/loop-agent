@@ -125,3 +125,40 @@ def test_duplicate_fields_reject_entire_batch_before_memory_writes(tmp_path):
     assert turn["status"] == "failed"
     assert turn["tool_calls"] == 0
     assert turn["trace"][-1]["kind"] == "error"
+
+
+@pytest.mark.parametrize("number", ["NaN", "Infinity", "-Infinity", "1e400", "-1e400"])
+def test_nonfinite_arguments_reject_entire_batch_before_memory_writes(tmp_path, number):
+    model = fake_live_model('{"key":"first","value":"must not save"}')
+    calls = model.client.chat.completions.response.choices[0].message.tool_calls
+    calls[0].function.name = "remember"
+    calls.append(SimpleNamespace(
+        id="call-2",
+        function=SimpleNamespace(
+            name="current_time",
+            arguments='{"secret":"do-not-log","nested":[{"value":' + number + '}]}',
+        ),
+    ))
+    path = tmp_path / "state.db"
+    memory = MemoryStore(path)
+    agent = AgentSystem(model=model, tools=build_tools(memory), memory=memory)
+
+    with pytest.raises(AgentTurnError, match="non-finite JSON numbers") as raised:
+        agent.run("Remember a fact")
+
+    reopened = MemoryStore(path)
+    assert reopened.recall() == []
+    turn = reopened.turn(raised.value.turn["turn_id"])
+    assert turn["status"] == "failed"
+    assert turn["tool_calls"] == 0
+    assert "do-not-log" not in turn["error"]
+    assert turn["trace"][-1]["kind"] == "error"
+
+
+def test_live_model_preserves_finite_numbers_and_numeric_strings():
+    arguments = fake_live_model(
+        '{"nested":[0,-2,1.25,1e308,1e-300],"text":"NaN Infinity 1e400"}'
+    ).complete([], []).tool_calls[0].arguments
+    assert arguments == {
+        "nested": [0, -2, 1.25, 1e308, 1e-300], "text": "NaN Infinity 1e400"
+    }

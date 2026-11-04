@@ -39,7 +39,9 @@ call IDs and names must contain valid Unicode; an invalid identifier rejects the
 before tool effects and leaves a readable failed trace. Tool
 schemas also reject missing, extra, incorrectly typed, or out-of-range string arguments before
 execution. Live-provider tool arguments must decode as a JSON object with unique field names (including
-nested objects); malformed or ambiguous payloads fail the
+nested objects) and finite numbers. `NaN`, infinities, and exponents that overflow to infinity
+reject the whole response before any tool executes, including values nested in arrays or objects.
+Malformed or ambiguous payloads fail the
 turn instead of being rewritten into an executable empty argument set. Tool results above 16 KiB
 are replaced with a bounded error and SHA-256 fingerprint before they enter the next model context
 or persisted trace. Model reply text above 32 KiB fails the turn before tool execution or trace
