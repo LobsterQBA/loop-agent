@@ -118,7 +118,9 @@ If a provider or loop error aborts a run, the cockpit still shows and exports th
 trace, including any earlier tool effects. The recent-run cards reopen completed, incomplete, and failed traces
 after a browser refresh or server restart.
 Invalid Unicode in exception messages is stored as readable backslash escapes so the
-failure record remains available; valid multilingual error text is preserved.
+failure record remains available; valid multilingual error text is preserved. If an exception
+cannot format its message, the record retains its type with a fixed fallback message, and
+keyboard interruptions still propagate after the failure is recorded.
 
 ## Connect a model
 

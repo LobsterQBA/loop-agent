@@ -323,7 +323,13 @@ class AgentSystem:
             # Provider exceptions can contain isolated surrogates. Preserve their
             # code points as readable escapes so recording the failure cannot
             # mask the original error (or interruption) with a SQLite encode error.
-            error = f"{type(exc).__name__}: {exc}".encode(
+            # A provider exception's __str__ can itself fail. Keep the original
+            # exception and partial effects auditable even when its text is broken.
+            try:
+                detail = str(exc)
+            except Exception:  # noqa: BLE001 - formatting must not mask the original failure
+                detail = "<exception message unavailable>"
+            error = f"{type(exc).__name__}: {detail}".encode(
                 "utf-8", errors="backslashreplace"
             ).decode("utf-8")
             emit("error", "Turn failed", {"error": error})
