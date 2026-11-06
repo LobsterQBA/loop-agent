@@ -149,3 +149,31 @@ def test_memory_search_treats_like_metacharacters_literally(tmp_path, query, mat
     memory.remember(matching_key, "matched")
 
     assert [item["key"] for item in memory.recall(query)] == [matching_key]
+
+
+def test_unprintable_tool_failure_returns_an_observation():
+    class ToolFailure(Exception):
+        def __str__(self):
+            raise ValueError("formatting detail")
+
+    def fail():
+        raise ToolFailure()
+
+    registry = ToolRegistry()
+    registry.register(Tool("fail", "Fail on execution.", {"type": "object"}, fail))
+
+    assert json.loads(registry.execute("fail", {})) == {
+        "ok": False,
+        "error": "ToolFailure: <exception message unavailable>",
+    }
+
+
+def test_tool_failure_with_surrogate_can_be_sent_to_model():
+    def fail():
+        raise ValueError("bad byte: \udcff")
+
+    registry = ToolRegistry()
+    registry.register(Tool("fail", "Fail on execution.", {"type": "object"}, fail))
+
+    output = registry.execute("fail", {}).encode("utf-8")
+    assert json.loads(output)["error"] == r"ValueError: bad byte: \udcff"

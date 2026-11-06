@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from agent_system.errors import describe_exception
 from agent_system.memory import MemoryStore
 
 ToolFunction = Callable[..., Any]
@@ -60,7 +61,7 @@ class ToolRegistry:
             return json.dumps({"ok": True, "result": value}, ensure_ascii=False)
         except Exception as exc:  # noqa: BLE001 - tool failures become model observations
             return json.dumps(
-                {"ok": False, "error": f"{type(exc).__name__}: {exc}"},
+                {"ok": False, "error": describe_exception(exc)},
                 ensure_ascii=False,
             )
 
