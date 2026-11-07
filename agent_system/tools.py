@@ -58,10 +58,21 @@ class ToolRegistry:
         try:
             _validate_arguments(tool, arguments)
             value = tool.function(**arguments)
-            return json.dumps({"ok": True, "result": value}, ensure_ascii=False)
         except Exception as exc:  # noqa: BLE001 - tool failures become model observations
             return json.dumps(
                 {"ok": False, "error": describe_exception(exc)},
+                ensure_ascii=False,
+            )
+
+        try:
+            return json.dumps({"ok": True, "result": value}, ensure_ascii=False, allow_nan=False)
+        except Exception as exc:  # noqa: BLE001 - encoding failures are recoverable observations
+            # The tool has already run; its effects must not be described as rejected input.
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": f"tool ran but output encoding failed: {describe_exception(exc)}",
+                },
                 ensure_ascii=False,
             )
 
