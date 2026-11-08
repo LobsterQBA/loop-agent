@@ -13,8 +13,19 @@ def reject_constant(value):
     raise ValueError(f"non-JSON constant: {value}")
 
 
-@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
-def test_nonfinite_output_is_observed_and_persisted_without_reexecution(tmp_path, value):
+@pytest.mark.parametrize(
+    ("value", "error_type"),
+    [
+        (float("nan"), "ValueError"),
+        (float("inf"), "ValueError"),
+        (float("-inf"), "ValueError"),
+        pytest.param("\ud800", "UnicodeEncodeError", id="high-surrogate"),
+        pytest.param("\udfff", "UnicodeEncodeError", id="low-surrogate"),
+        ({"\ud800": "value"}, "UnicodeEncodeError"),
+        ({"text": "你好😀\udfff"}, "UnicodeEncodeError"),
+    ],
+)
+def test_invalid_output_is_observed_and_persisted_without_reexecution(tmp_path, value, error_type):
     memory = MemoryStore(tmp_path / "state.db")
     executions = []
 
@@ -33,6 +44,7 @@ def test_nonfinite_output_is_observed_and_persisted_without_reexecution(tmp_path
         def complete(self, messages, tools):
             outputs = [message["content"] for message in messages if message["role"] == "tool"]
             if outputs:
+                outputs[-1].encode("utf-8")
                 observations.append(json.loads(outputs[-1], parse_constant=reject_constant))
             if len(outputs) < 2:
                 return ModelReply(tool_calls=[ToolCall("same-id", "save", {})])
@@ -44,23 +56,27 @@ def test_nonfinite_output_is_observed_and_persisted_without_reexecution(tmp_path
     assert len(observations) == 2
     assert observations[0] == observations[1]
     assert observations[0]["ok"] is False
-    assert "output" in observations[0]["error"]
-    assert "ValueError" in observations[0]["error"]
+    assert "tool ran but output encoding failed" in observations[0]["error"]
+    assert error_type in observations[0]["error"]
     assert turn.status == "completed"  # The model can recover from a failed observation.
     assert sum(event["kind"] == "deduplicate" for event in turn.trace) == 1
     with sqlite3.connect(tmp_path / "state.db") as conn:
         raw_trace = conn.execute(
             "SELECT trace_json FROM turns WHERE id = ?", (turn.turn_id,)
         ).fetchone()[0]
+    raw_trace.encode("utf-8")
     saved_trace = json.loads(raw_trace, parse_constant=reject_constant)
     assert [event["detail"] for event in saved_trace if event["kind"] == "observe"] == observations
 
 
 def test_finite_nested_output_is_preserved():
-    value = {"nested": [None, True, 0, -2.5, "你好", {"score": 1.25}]}
+    value = {"nested": [None, True, 0, -2.5, "你好😀", {"中文🔑": "值🌟", "score": 1.25}]}
     registry = ToolRegistry()
     registry.register(Tool("value", "Return data.", {"type": "object"}, lambda: value))
-    assert json.loads(registry.execute("value", {}), parse_constant=reject_constant) == {
+    output = registry.execute("value", {})
+    output.encode("utf-8")
+    assert "你好😀" in output
+    assert json.loads(output, parse_constant=reject_constant) == {
         "ok": True,
         "result": value,
     }

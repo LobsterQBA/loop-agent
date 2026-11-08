@@ -65,7 +65,11 @@ class ToolRegistry:
             )
 
         try:
-            return json.dumps({"ok": True, "result": value}, ensure_ascii=False, allow_nan=False)
+            output = json.dumps({"ok": True, "result": value}, ensure_ascii=False, allow_nan=False)
+            # JSON serialization alone permits isolated surrogates in keys and values.
+            # Validate before the loop consumes or persists this successful observation.
+            output.encode("utf-8")
+            return output
         except Exception as exc:  # noqa: BLE001 - encoding failures are recoverable observations
             # The tool has already run; its effects must not be described as rejected input.
             return json.dumps(
