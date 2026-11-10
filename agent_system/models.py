@@ -65,6 +65,10 @@ def _parse_tool_arguments(*, call_id: str, tool_name: str, raw_arguments: str | 
         raise ValueError(
             f"tool call {call_id!r} for {tool_name!r} returned invalid JSON arguments"
         ) from exc
+    except RecursionError as exc:
+        raise ValueError(
+            f"tool call {call_id!r} for {tool_name!r} arguments are nested too deeply"
+        ) from exc
     if not isinstance(arguments, dict):
         raise TypeError(
             f"tool call {call_id!r} for {tool_name!r} arguments must decode to an object"
