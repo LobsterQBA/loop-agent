@@ -1,4 +1,4 @@
-import sys
+import json
 from types import SimpleNamespace
 
 import pytest
@@ -156,18 +156,24 @@ def test_nonfinite_arguments_reject_entire_batch_before_memory_writes(tmp_path, 
     assert turn["trace"][-1]["kind"] == "error"
 
 
-def test_deep_arguments_reject_entire_batch_before_memory_writes(tmp_path):
+def test_deep_arguments_reject_entire_batch_before_memory_writes(tmp_path, monkeypatch):
     model = fake_live_model('{"key":"first","value":"must not save"}')
     calls = model.client.chat.completions.response.choices[0].message.tool_calls
     calls[0].function.name = "remember"
-    depth = 2 * sys.getrecursionlimit()
+    arguments = '{"value":' + "[" * 2000 + '"do-not-log"' + "]" * 2000 + "}"
     calls.append(SimpleNamespace(
         id="call-2",
-        function=SimpleNamespace(
-            name="current_time",
-            arguments='{"value":' + "[" * depth + '"do-not-log"' + "]" * depth + "}",
-        ),
+        function=SimpleNamespace(name="current_time", arguments=arguments),
     ))
+    decode = json.loads
+
+    # Decoders may reach their recursion limit at different depths across runtimes.
+    def decode_with_depth_failure(raw, **kwargs):
+        if raw == arguments:
+            raise RecursionError("decoder recursion limit exceeded")
+        return decode(raw, **kwargs)
+
+    monkeypatch.setattr(json, "loads", decode_with_depth_failure)
     path = tmp_path / "state.db"
     memory = MemoryStore(path)
     agent = AgentSystem(model=model, tools=build_tools(memory), memory=memory)
