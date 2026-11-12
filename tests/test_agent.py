@@ -581,3 +581,40 @@ def test_valid_unicode_tool_identifiers_execute_and_round_trip(tmp_path):
     assert event["tool_call_id"] == "调用-🦞"
     assert event["tool_name"] == "记住"
     json.dumps(saved, ensure_ascii=False).encode("utf-8")
+
+
+@pytest.mark.parametrize("name", ["provider-模型 🌍", "provider-\ud800"])
+@pytest.mark.parametrize("fails", [False, True])
+def test_custom_model_name_persists_after_tool_write(tmp_path, name, fails):
+    class CustomModel:
+        def complete(self, messages, tools):
+            if not any(message["role"] == "tool" for message in messages):
+                return ModelReply(
+                    tool_calls=[ToolCall("save", "remember", {"key": "partial", "value": "saved"})]
+                )
+            if fails:
+                raise RuntimeError("provider unavailable")
+            return ModelReply(text="Saved")
+
+    model = CustomModel()
+    model.name = name
+    agent = make_agent(tmp_path, model)
+    if fails:
+        with pytest.raises(AgentTurnError, match="provider unavailable") as raised:
+            agent.run("Save the value")
+        result = raised.value.turn
+    else:
+        result = agent.run("Save the value").to_dict()
+
+    expected_name = name.encode("utf-8", errors="backslashreplace").decode("utf-8")
+    reopened = MemoryStore(tmp_path / "state.db")
+    persisted = reopened.turn(result["turn_id"])
+    assert reopened.recall("partial")[0]["value"] == "saved"
+    assert persisted["status"] == result["status"] == ("failed" if fails else "completed")
+    assert persisted["model"] == result["model"] == expected_name
+    assert reopened.recent_turns()[0]["model"] == expected_name
+    assert persisted["trace"] == result["trace"]
+    assert [
+        event["detail"]["model"] for event in persisted["trace"] if event["kind"] == "reason"
+    ] == [expected_name, expected_name]
+    json.dumps(result, ensure_ascii=False).encode("utf-8")

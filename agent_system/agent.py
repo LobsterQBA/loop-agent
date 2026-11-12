@@ -104,6 +104,9 @@ class AgentSystem:
         except UnicodeEncodeError as exc:
             raise ValueError("message must contain valid Unicode") from exc
 
+        # Use one SQLite- and JSON-safe label for the trace and the turn record.
+        model_name = self.model.name.encode("utf-8", errors="backslashreplace").decode("utf-8")
+
         started = time.perf_counter()
         trace: list[dict] = []
         tool_call_count = 0
@@ -132,7 +135,7 @@ class AgentSystem:
         try:
             for iteration in range(1, self.max_iterations + 1):
                 iterations = iteration
-                emit("reason", f"Model call · iteration {iteration}", {"model": self.model.name})
+                emit("reason", f"Model call · iteration {iteration}", {"model": model_name})
                 model_reply = self.model.complete(messages, self.tools.schemas())
                 reply_bytes = model_reply.text.encode("utf-8")
                 if len(reply_bytes) > self.max_model_reply_bytes:
@@ -327,7 +330,7 @@ class AgentSystem:
                 user_message=user_message,
                 reply="",
                 mode=self.mode,
-                model=self.model.name,
+                model=model_name,
                 iterations=iterations,
                 trace=trace,
                 status="failed",
@@ -342,7 +345,7 @@ class AgentSystem:
                 iterations=iterations,
                 tool_calls=tool_call_count,
                 mode=self.mode,
-                model=self.model.name,
+                model=model_name,
                 turn_id=turn_id,
             ) from exc
 
@@ -355,7 +358,7 @@ class AgentSystem:
             user_message=user_message,
             reply=reply,
             mode=self.mode,
-            model=self.model.name,
+            model=model_name,
             iterations=iterations,
             trace=trace,
             status=status,
@@ -366,7 +369,7 @@ class AgentSystem:
             iterations=iterations,
             tool_calls=tool_call_count,
             mode=self.mode,
-            model=self.model.name,
+            model=model_name,
             turn_id=turn_id,
             status=status,
         )
