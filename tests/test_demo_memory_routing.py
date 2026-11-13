@@ -19,6 +19,9 @@ def make_agent(path):
         "the order number is 123-456",
         "the ratio is 3/4",
         "the formula is 2 + 3",
+        "the memory limit is 2 GB",
+        "the recall deadline is Friday",
+        "the phrase is what do you remember",
     ],
 )
 def test_memory_facts_remain_literal_after_restart(tmp_path, fact):
@@ -57,3 +60,29 @@ def test_explicit_calculation_can_still_save_result(tmp_path, verb):
     turn = agent.run(f"{verb} 2 + 3 and save as total.")
     assert agent.memory.recall("total")[0]["value"] == "5"
     assert turn.tool_calls == 2
+
+
+def test_calculated_result_can_use_memory_in_its_key(tmp_path):
+    agent = make_agent(tmp_path / "state.db")
+    turn = agent.run("Calculate 2 + 3 and save as memory score.")
+    assert agent.memory.recall("memory score")[0]["value"] == "5"
+    assert [e["tool_name"] for e in turn.trace if e["kind"] == "tool"] == ["calculate", "remember"]
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "Recall save preference",
+        "Please recall save preference",
+        "Memory save preference",
+        "What do you remember about save preference?",
+    ],
+)
+def test_recall_query_with_save_word_does_not_write(tmp_path, prompt):
+    agent = make_agent(tmp_path / "state.db")
+    agent.memory.remember("save preference", "Keep the original")
+    before = agent.memory.recall()
+    turn = agent.run(prompt)
+    assert "Keep the original" in turn.reply
+    assert agent.memory.recall() == before
+    assert [e["tool_name"] for e in turn.trace if e["kind"] == "tool"] == ["recall"]

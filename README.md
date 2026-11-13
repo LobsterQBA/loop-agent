@@ -91,6 +91,9 @@ Demo mode follows a few fixed rules. Memory requests preserve dates, IDs, and fo
 as text: `Remember that the launch date is 2026-11-02` saves the fact without calculating.
 To calculate and save a result, explicitly say `Calculate`, `Compute`, or `计算`, for example
 `Calculate 2 + 3 and save as total`. Standalone arithmetic such as `2 + 3` still works.
+The first English memory command determines whether to save or recall. Recall words
+inside a fact or save key stay literal:
+`Remember that the memory limit is 2 GB` saves the fact instead of searching for it.
 Live mode connects an LLM to the same tools.
 The [walkthrough](docs/walkthrough.md) explains each step and includes troubleshooting.
 

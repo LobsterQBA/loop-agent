@@ -121,10 +121,15 @@ class DemoModel:
         results = _tool_results(messages)
         expression = _arithmetic_expression(user_message)
 
-        wants_recall = any(
-            phrase in lower
-            for phrase in ("recall", "what do you remember", "memory", "你记得", "回忆")
+        # The first English memory command wins: recall words in a saved fact
+        # or key must not override an earlier remember/save instruction.
+        memory_command = re.search(
+            r"\b(what do you remember|recall|memory|remember|save)\b", lower
         )
+        wants_recall = (
+            memory_command is not None
+            and memory_command.group(1) in {"what do you remember", "recall", "memory"}
+        ) or any(phrase in lower for phrase in ("你记得", "回忆"))
         wants_memory = (
             any(word in lower for word in ("remember", "save", "记住", "保存")) and not wants_recall
         )
