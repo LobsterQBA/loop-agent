@@ -86,3 +86,21 @@ def test_recall_query_with_save_word_does_not_write(tmp_path, prompt):
     assert "Keep the original" in turn.reply
     assert agent.memory.recall() == before
     assert [e["tool_name"] for e in turn.trace if e["kind"] == "tool"] == ["recall"]
+
+
+@pytest.mark.parametrize(
+    ("prompt", "expected_tools"),
+    [
+        ("The screensaver is enabled", []),
+        ("She remembers the setup", []),
+        ("2 + 3 on the screensaver", ["calculate"]),
+        ("Please save that the screensaver is enabled", ["remember"]),
+        ("保存测试内容", ["remember"]),
+    ],
+)
+def test_memory_write_requires_whole_english_command(tmp_path, prompt, expected_tools):
+    agent = make_agent(tmp_path / "state.db")
+    turn = agent.run(prompt)
+
+    assert [e["tool_name"] for e in turn.trace if e["kind"] == "tool"] == expected_tools
+    assert bool(agent.memory.recall()) == ("remember" in expected_tools)

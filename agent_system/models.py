@@ -126,12 +126,12 @@ class DemoModel:
         memory_command = re.search(
             r"\b(what do you remember|recall|memory|remember|save)\b", lower
         )
-        wants_recall = (
-            memory_command is not None
-            and memory_command.group(1) in {"what do you remember", "recall", "memory"}
-        ) or any(phrase in lower for phrase in ("你记得", "回忆"))
-        wants_memory = (
-            any(word in lower for word in ("remember", "save", "记住", "保存")) and not wants_recall
+        command = memory_command.group(1) if memory_command else None
+        wants_recall = command in {"what do you remember", "recall", "memory"} or any(
+            phrase in lower for phrase in ("你记得", "回忆")
+        )
+        wants_memory = not wants_recall and (
+            command in {"remember", "save"} or any(word in lower for word in ("记住", "保存"))
         )
         wants_time = any(
             phrase in lower for phrase in ("what time", "current time", "几点", "时间")
