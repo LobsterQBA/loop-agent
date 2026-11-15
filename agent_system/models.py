@@ -133,7 +133,8 @@ class DemoModel:
         wants_memory = not wants_recall and (
             command in {"remember", "save"} or any(word in lower for word in ("记住", "保存"))
         )
-        wants_time = any(
+        # A memory fact, key, or query can contain clock phrases as literal text.
+        wants_time = not (wants_memory or wants_recall) and any(
             phrase in lower for phrase in ("what time", "current time", "几点", "时间")
         )
 

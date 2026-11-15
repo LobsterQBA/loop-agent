@@ -22,6 +22,8 @@ def make_agent(path):
         "the memory limit is 2 GB",
         "the recall deadline is Friday",
         "the phrase is what do you remember",
+        "the current time display uses UTC",
+        "the label is 时间",
     ],
 )
 def test_memory_facts_remain_literal_after_restart(tmp_path, fact):
@@ -37,14 +39,21 @@ def test_memory_facts_remain_literal_after_restart(tmp_path, fact):
     assert restarted.memory.turn(turn.turn_id)["status"] == "completed"
 
 
-@pytest.mark.parametrize("query", ["2026-11-02", "123-456", "3/4"])
-def test_recall_numeric_queries_does_not_calculate(tmp_path, query):
+@pytest.mark.parametrize("query", ["2026-11-02", "123-456", "3/4", "current time display", "时间"])
+def test_recall_queries_remain_literal(tmp_path, query):
     agent = make_agent(tmp_path / "state.db")
     agent.memory.remember("saved fact", f"value for {query}")
     turn = agent.run(f"Recall {query}")
 
     assert f"value for {query}" in turn.reply
     assert [e["tool_name"] for e in turn.trace if e["kind"] == "tool"] == ["recall"]
+
+
+@pytest.mark.parametrize("prompt", ["What time is it?", "Show the current time.", "现在几点？"])
+def test_standalone_time_request_reads_clock(tmp_path, prompt):
+    turn = make_agent(tmp_path / "state.db").run(prompt)
+    assert [e["tool_name"] for e in turn.trace if e["kind"] == "tool"] == ["current_time"]
+    assert turn.reply.startswith("Local time: ")
 
 
 @pytest.mark.parametrize("prompt", ["2 + 3", "What is 2 + 3?"])
