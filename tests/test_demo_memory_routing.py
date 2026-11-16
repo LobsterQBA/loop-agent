@@ -113,3 +113,38 @@ def test_memory_write_requires_whole_english_command(tmp_path, prompt, expected_
 
     assert [e["tool_name"] for e in turn.trace if e["kind"] == "tool"] == expected_tools
     assert bool(agent.memory.recall()) == ("remember" in expected_tools)
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "The current time display uses UTC.",
+        "I wonder what time the meeting starts.",
+        "What time does the store open?",
+        "Show the current time format.",
+        "Do not show the current time.",
+        "时间管理很重要。",
+        "会议几点开始？",
+        "现在几点不重要。",
+    ],
+)
+def test_clock_mentions_do_not_read_clock(tmp_path, prompt):
+    turn = make_agent(tmp_path / "state.db").run(prompt)
+    assert [e["tool_name"] for e in turn.trace if e["kind"] == "tool"] == []
+
+
+@pytest.mark.parametrize(
+    "prompt",
+    [
+        "  PLEASE show me the current time!  ",
+        "What is the current time?",
+        "Tell me the time, please.",
+        "current time",
+        "现在几点了？",
+        "请告诉我现在的时间。",
+        "时间",
+    ],
+)
+def test_explicit_clock_request_variants(tmp_path, prompt):
+    turn = make_agent(tmp_path / "state.db").run(prompt)
+    assert [e["tool_name"] for e in turn.trace if e["kind"] == "tool"] == ["current_time"]

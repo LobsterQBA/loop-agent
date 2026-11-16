@@ -95,7 +95,10 @@ The first English memory command determines whether to save or recall. Recall wo
 inside a fact or save key stay literal:
 `Remember that the memory limit is 2 GB` saves the fact instead of searching for it.
 Clock phrases in memory requests also stay literal. Ask `What time is it?` on its own
-to read the clock.
+to read the clock. Clock requests must match a complete supported phrase, such as
+`Show the current time.`, `Tell me the time, please.`, or `现在几点？`.
+Descriptions such as `The current time display uses UTC.` and schedule questions
+such as `What time does the store open?` do not read the clock.
 Live mode connects an LLM to the same tools.
 The [walkthrough](docs/walkthrough.md) explains each step and includes troubleshooting.
 

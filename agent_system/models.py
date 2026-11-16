@@ -110,6 +110,19 @@ def _memory_key(text: str) -> str:
     return "note"
 
 
+def _clock_request(text: str) -> bool:
+    # Match the whole fixed-rule request so descriptions, negations, and
+    # questions about event schedules do not accidentally read the clock.
+    normalized = " ".join(text.lower().split()).rstrip(".?!。？！")
+    return bool(re.fullmatch(
+        r"(?:please )?(?:what time is it(?: now)?|what is the (?:current )?time|"
+        r"(?:show|tell)(?: me)? the (?:current )?time|current time)"
+        r"(?:,? please)?|"
+        r"(?:请)?(?:告诉我|显示)?(?:现在(?:的)?)?(?:几点(?:了)?|时间)",
+        normalized,
+    ))
+
+
 class DemoModel:
     """A transparent rule-based planner for the no-key interactive demo."""
 
@@ -134,9 +147,7 @@ class DemoModel:
             command in {"remember", "save"} or any(word in lower for word in ("记住", "保存"))
         )
         # A memory fact, key, or query can contain clock phrases as literal text.
-        wants_time = not (wants_memory or wants_recall) and any(
-            phrase in lower for phrase in ("what time", "current time", "几点", "时间")
-        )
+        wants_time = not (wants_memory or wants_recall) and _clock_request(user_message)
 
         # Memory requests treat dates, identifiers, and formulas as literal text.
         # Combining memory with arithmetic requires an explicit calculation cue.
