@@ -239,3 +239,34 @@ def test_declared_count_check_rejects_metadata_that_disagrees_with_trace():
     assert count_check["passed"] is False
     assert evaluation["summary"]["iterations"] == 1
     assert evaluation["summary"]["tool_calls"] == 1
+
+
+@pytest.mark.parametrize("elapsed_ms", [True, float("inf"), float("nan"), -1])
+def test_invalid_elapsed_time_fails_timing_check_and_is_omitted_from_summary(elapsed_ms):
+    evaluation = evaluate_trace(
+        {
+            "reply": "done",
+            "iterations": 0,
+            "tool_calls": 0,
+            "trace": [event(1, "input", 0), event(2, "done", elapsed_ms)],
+        }
+    )
+
+    assert {check["name"] for check in evaluation["checks"] if not check["passed"]} == {
+        "monotonic_timing"
+    }
+    assert evaluation["summary"]["duration_ms"] is None
+
+
+def test_fractional_elapsed_times_pass_timing_check():
+    evaluation = evaluate_trace(
+        {
+            "reply": "done",
+            "iterations": 0,
+            "tool_calls": 0,
+            "trace": [event(1, "input", 0), event(2, "done", 1.25)],
+        }
+    )
+
+    assert evaluation["trace_integrity"] == "passed"
+    assert evaluation["summary"]["duration_ms"] == 1.25

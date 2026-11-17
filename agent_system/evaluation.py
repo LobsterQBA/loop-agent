@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from math import inf
 from typing import Any
 
 
@@ -14,6 +15,10 @@ def _tool_identity(event: Mapping[str, Any]) -> tuple[str, str] | None:
     if not isinstance(tool_name, str) or not tool_name.strip():
         return None
     return call_id, tool_name
+
+
+def _valid_elapsed_ms(value: Any) -> bool:
+    return type(value) in (int, float) and 0 <= value < inf
 
 
 def evaluate_trace(turn: Mapping[str, Any]) -> dict:
@@ -67,9 +72,9 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
         },
         {
             "name": "monotonic_timing",
-            "passed": all(isinstance(value, int | float) and value >= 0 for value in elapsed)
+            "passed": all(_valid_elapsed_ms(value) for value in elapsed)
             and elapsed == sorted(elapsed),
-            "detail": "Elapsed times are non-negative and never move backwards.",
+            "detail": "Elapsed times are finite, non-negative numbers and never move backwards.",
         },
         {
             "name": "tool_observations",
@@ -106,7 +111,7 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
         },
     ]
     passed = sum(check["passed"] for check in checks)
-    duration_ms = elapsed[-1] if elapsed and isinstance(elapsed[-1], int | float) else None
+    duration_ms = elapsed[-1] if elapsed and _valid_elapsed_ms(elapsed[-1]) else None
     return {
         "task_status": status,
         "trace_integrity": "passed" if passed == len(checks) else "failed",
