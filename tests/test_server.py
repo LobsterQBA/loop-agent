@@ -1,4 +1,5 @@
 import json
+import sqlite3
 import threading
 import urllib.error
 import urllib.request
@@ -17,6 +18,41 @@ def request_json(url, *, payload=None):
     request = urllib.request.Request(url, data=data, headers=headers)
     with urllib.request.urlopen(request, timeout=3) as response:
         return response.status, json.load(response)
+
+
+def test_saved_turn_api_recovers_nonfinite_numbers_in_legacy_trace(tmp_path):
+    # Python accepts NaN and Infinity by default. Browsers reject them.
+    def reject_constant(value):
+        raise ValueError(f"invalid JSON constant: {value}")
+
+    server = create_server(port=0, home=tmp_path / "agent-home")
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        _, turn = request_json(f"{base}/api/run", payload={"message": "Calculate 8 * 9"})
+        trace = turn["trace"]
+        trace[0]["elapsed_ms"] = float("nan")
+        trace[0]["legacy_metadata"] = [float("inf"), float("-inf"), "NaN", 1.25]
+        with sqlite3.connect(server.app.memory.path) as db:
+            db.execute(
+                "UPDATE turns SET trace_json = ? WHERE id = ?",
+                (json.dumps(trace), turn["turn_id"]),
+            )
+
+        with urllib.request.urlopen(f"{base}/api/turns/{turn['turn_id']}", timeout=3) as response:
+            assert response.status == 200
+            saved = json.load(response, parse_constant=reject_constant)
+        assert saved["reply"] == turn["reply"]
+        assert saved["tool_calls"] == 1
+        assert saved["trace"][1:] == trace[1:]
+        assert saved["trace"][0]["elapsed_ms"] is None
+        assert saved["trace"][0]["legacy_metadata"] == [None, None, "NaN", 1.25]
+        assert saved["evaluation"]["trace_integrity"] == "failed"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
 
 
 class FailingModel:

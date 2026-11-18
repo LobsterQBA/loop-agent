@@ -161,6 +161,8 @@ class MemoryStore:
             return None
         turn = dict(row)
         turn["turn_id"] = turn.pop("id")
-        turn["trace"] = json.loads(turn.pop("trace_json"))
+        # Older traces can contain Python's NaN and Infinity tokens. Decode
+        # them as missing values so browsers can still read the other events.
+        turn["trace"] = json.loads(turn.pop("trace_json"), parse_constant=lambda _: None)
         turn["tool_calls"] = sum(event.get("kind") == "tool" for event in turn["trace"])
         return turn

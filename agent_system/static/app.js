@@ -64,9 +64,13 @@ function traceStep(event) {
 
   const timing = document.createElement("span");
   timing.className = "trace-time";
-  timing.textContent = `${event.elapsed_ms} ms`;
+  timing.textContent = formatElapsed(event.elapsed_ms);
   article.append(dot, body, timing);
   return article;
+}
+
+function formatElapsed(elapsed) {
+  return Number.isFinite(elapsed) && elapsed >= 0 ? `${elapsed} ms` : "Unknown";
 }
 
 function renderTrace(trace) {
@@ -74,7 +78,7 @@ function renderTrace(trace) {
   trace.forEach((event) => traceList.append(traceStep(event)));
   traceList.scrollTop = 0;
   const last = trace.at(-1);
-  traceClock.textContent = `${last?.elapsed_ms || 0} ms`;
+  traceClock.textContent = last ? formatElapsed(last.elapsed_ms) : "0 ms";
 }
 
 function evaluationLabel(turn) {
