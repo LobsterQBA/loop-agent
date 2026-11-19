@@ -5,6 +5,8 @@ import urllib.error
 import urllib.request
 from importlib.metadata import version
 
+import pytest
+
 from agent_system.models import ModelReply, ToolCall
 from agent_system.server import create_server
 
@@ -49,6 +51,36 @@ def test_saved_turn_api_recovers_nonfinite_numbers_in_legacy_trace(tmp_path):
         assert saved["trace"][0]["elapsed_ms"] is None
         assert saved["trace"][0]["legacy_metadata"] == [None, None, "NaN", 1.25]
         assert saved["evaluation"]["trace_integrity"] == "failed"
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+
+@pytest.mark.parametrize("trace_json", ['[{"kind":', "{}", "[null]"])
+def test_saved_turn_api_reports_corrupt_trace(tmp_path, trace_json):
+    server = create_server(port=0, home=tmp_path / "agent-home")
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    base = f"http://127.0.0.1:{server.server_port}"
+    try:
+        _, turn = request_json(f"{base}/api/run", payload={"message": "Calculate 8 * 9"})
+        turn_id = turn["turn_id"]
+        with sqlite3.connect(server.app.memory.path) as db:
+            db.execute("UPDATE turns SET trace_json = ? WHERE id = ?", (trace_json, turn_id))
+
+        with pytest.raises(urllib.error.HTTPError) as error:
+            request_json(f"{base}/api/turns/{turn_id}")
+        with error.value as response:
+            assert response.code == 500
+            assert json.load(response) == {"error": "Saved turn trace is corrupt."}
+
+        _, history = request_json(f"{base}/api/memory")
+        assert history["turns"][0]["id"] == turn_id
+        with sqlite3.connect(server.app.memory.path) as db:
+            assert db.execute("SELECT trace_json FROM turns WHERE id = ?", (turn_id,)).fetchone() == (
+                trace_json,
+            )
     finally:
         server.shutdown()
         server.server_close()

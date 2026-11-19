@@ -48,6 +48,10 @@ def _literal_like_pattern(value: str) -> str:
     return f"%{escaped}%"
 
 
+class CorruptTraceError(ValueError):
+    """A saved turn does not contain a readable list of trace events."""
+
+
 class MemoryStore:
     """Durable local facts plus an inspectable ledger of agent turns."""
 
@@ -163,6 +167,12 @@ class MemoryStore:
         turn["turn_id"] = turn.pop("id")
         # Older traces can contain Python's NaN and Infinity tokens. Decode
         # them as missing values so browsers can still read the other events.
-        turn["trace"] = json.loads(turn.pop("trace_json"), parse_constant=lambda _: None)
-        turn["tool_calls"] = sum(event.get("kind") == "tool" for event in turn["trace"])
+        try:
+            trace = json.loads(turn.pop("trace_json"), parse_constant=lambda _: None)
+        except (json.JSONDecodeError, UnicodeDecodeError, RecursionError) as exc:
+            raise CorruptTraceError("Saved turn trace is corrupt.") from exc
+        if not isinstance(trace, list) or any(not isinstance(event, dict) for event in trace):
+            raise CorruptTraceError("Saved turn trace is corrupt.")
+        turn["trace"] = trace
+        turn["tool_calls"] = sum(event.get("kind") == "tool" for event in trace)
         return turn

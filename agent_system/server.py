@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 from agent_system import __version__
 from agent_system.agent import MAX_USER_MESSAGE_CHARS, AgentSystem, AgentTurnError
 from agent_system.evaluation import evaluate_trace
-from agent_system.memory import MemoryStore
+from agent_system.memory import CorruptTraceError, MemoryStore
 from agent_system.models import DemoModel, LiveModel
 from agent_system.tools import build_tools
 
@@ -166,7 +166,11 @@ class AgentHandler(BaseHTTPRequestHandler):
                 and len(normalized_id) <= 19
                 and int(normalized_id) <= 2**63 - 1
             ):
-                turn = self.app.memory.turn(int(normalized_id))
+                try:
+                    turn = self.app.memory.turn(int(normalized_id))
+                except CorruptTraceError as exc:
+                    self._json({"error": str(exc)}, HTTPStatus.INTERNAL_SERVER_ERROR)
+                    return
                 if turn is not None:
                     turn["evaluation"] = evaluate_trace(turn)
                     self._json(turn)
