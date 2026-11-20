@@ -2,6 +2,7 @@ const state = {
   mode: "demo",
   liveConfigured: false,
   turn: null,
+  historyRequest: 0,
   recorded: document.body.dataset.preview === "recorded",
   examples: [],
 };
@@ -139,10 +140,7 @@ function renderMemory(payload) {
   });
 }
 
-async function loadSavedTurn(turnId) {
-  const response = await fetch(`/api/turns/${turnId}`);
-  const turn = await response.json();
-  if (!response.ok) throw new Error(turn.error || "Saved turn could not be loaded.");
+function renderSavedTurn(turn) {
   state.turn = turn;
   replyText.textContent = turn.status === "failed" ? turn.error : turn.reply;
   renderTrace(turn.trace);
@@ -156,11 +154,24 @@ async function loadSavedTurn(turnId) {
 
 document.querySelector("#turn-history").addEventListener("click", async (event) => {
   const button = event.target.closest("[data-turn-id]");
-  if (!button || state.recorded) return;
+  if (!button || state.recorded || runButton.disabled) return;
+  const turnId = button.dataset.turnId;
+  const request = ++state.historyRequest;
   try {
-    await loadSavedTurn(button.dataset.turnId);
+    const response = await fetch(`/api/turns/${turnId}`);
+    const turn = await response.json();
+    if (request !== state.historyRequest) return;
+    if (!response.ok) throw new Error(turn.error || "Saved turn could not be loaded.");
+    renderSavedTurn(turn);
   } catch (error) {
+    if (request !== state.historyRequest) return;
+    state.turn = null;
     replyText.textContent = error.message;
+    traceList.replaceChildren();
+    traceClock.textContent = "error";
+    document.querySelector("#turn-summary").textContent =
+      `Saved turn ${turnId} could not be loaded.`;
+    document.querySelector("#download-trace").disabled = true;
   }
 });
 
@@ -203,6 +214,7 @@ form.addEventListener("submit", async (event) => {
   const message = input.value.trim();
   if (!message) return;
 
+  state.historyRequest += 1;
   runButton.disabled = true;
   runButton.querySelector("span").textContent = "Running task…";
   replyText.textContent = "Running tools and collecting results…";
