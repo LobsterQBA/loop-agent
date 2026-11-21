@@ -166,6 +166,15 @@ surrogates are rejected before model or tool execution; valid multilingual text 
 remain supported. Demo calculations retain the full extracted expression: expressions beyond
 the calculator's 100-character limit return an error without saving a partial result.
 
+To check saved-turn history and trace downloads in Chromium, install the browser test extra
+and run the separate suite:
+
+```bash
+pip install -e '.[browser]'
+python -m playwright install --only-shell chromium
+pytest -q browser_tests
+```
+
 ## Limits and further reading
 
 This is a local learning project with four tools. The server binds to localhost and has no
