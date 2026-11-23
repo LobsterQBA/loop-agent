@@ -270,3 +270,19 @@ def test_fractional_elapsed_times_pass_timing_check():
 
     assert evaluation["trace_integrity"] == "passed"
     assert evaluation["summary"]["duration_ms"] == 1.25
+
+
+@pytest.mark.parametrize("first_step", [True, 1.0])
+def test_step_numbers_require_integers(first_step):
+    evaluation = evaluate_trace(
+        {
+            "reply": "Finished",
+            "iterations": 0,
+            "tool_calls": 0,
+            "trace": [event(first_step, "input", 0), event(2, "done", 1)],
+        }
+    )
+
+    assert {check["name"] for check in evaluation["checks"] if not check["passed"]} == {
+        "sequential_steps"
+    }

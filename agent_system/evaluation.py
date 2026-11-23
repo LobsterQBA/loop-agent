@@ -67,8 +67,9 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
         },
         {
             "name": "sequential_steps",
-            "passed": steps == list(range(1, len(events) + 1)),
-            "detail": "Trace steps are contiguous and start at 1.",
+            "passed": len(steps) == len(events)
+            and all(type(step) is int and step == index for index, step in enumerate(steps, 1)),
+            "detail": "Trace steps are consecutive integers starting at 1.",
         },
         {
             "name": "monotonic_timing",
