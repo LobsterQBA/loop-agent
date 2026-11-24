@@ -130,10 +130,11 @@ def test_iteration_limit_is_incomplete_with_valid_trace():
     assert evaluation["trace_integrity"] == "passed"
 
 
-def test_unknown_turn_status_cannot_pass_integrity_checks():
+@pytest.mark.parametrize("status", ["running", ["completed"], {"status": "completed"}])
+def test_unknown_turn_status_cannot_pass_integrity_checks(status):
     evaluation = evaluate_trace(
         {
-            "status": "running",
+            "status": status,
             "reply": "done",
             "iterations": 0,
             "tool_calls": 0,
@@ -143,6 +144,8 @@ def test_unknown_turn_status_cannot_pass_integrity_checks():
 
     status_check = next(check for check in evaluation["checks"] if check["name"] == "turn_status")
     assert status_check["passed"] is False
+    assert evaluation["task_status"] == status
+    assert all(check["passed"] for check in evaluation["checks"] if check is not status_check)
     assert evaluation["trace_integrity"] == "failed"
 
 
