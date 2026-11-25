@@ -37,9 +37,12 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
     )
     iterations = sum(isinstance(event, dict) and event.get("kind") == "reason" for event in events)
     pending_tool: tuple[str, str] | None = None
+    event_kinds_valid = True
     tool_sequence_valid = True
     for event in events:
         kind = event.get("kind") if isinstance(event, dict) else None
+        if not isinstance(kind, str) or not kind.strip():
+            event_kinds_valid = False
         if kind == "tool":
             identity = _tool_identity(event)
             if pending_tool is not None or identity is None:
@@ -64,6 +67,11 @@ def evaluate_trace(turn: Mapping[str, Any]) -> dict:
             "name": "turn_status",
             "passed": status_valid,
             "detail": "Turn status is 'completed', 'incomplete', or 'failed'.",
+        },
+        {
+            "name": "event_kinds",
+            "passed": event_kinds_valid,
+            "detail": "Every trace event has a non-empty string kind.",
         },
         {
             "name": "sequential_steps",

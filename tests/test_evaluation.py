@@ -64,8 +64,8 @@ def test_completed_trace_passes_all_integrity_checks():
 
     assert evaluation["trace_integrity"] == "passed"
     assert evaluation["summary"] == {
-        "checks_passed": 7,
-        "checks_total": 7,
+        "checks_passed": 8,
+        "checks_total": 8,
         "iterations": 1,
         "tool_calls": 1,
         "observations": 1,
@@ -85,7 +85,7 @@ def test_evaluation_reports_each_trace_integrity_failure():
     )
 
     assert evaluation["trace_integrity"] == "failed"
-    assert evaluation["summary"]["checks_passed"] == 3
+    assert evaluation["summary"]["checks_passed"] == 4
     assert {check["name"] for check in evaluation["checks"] if not check["passed"]} == {
         "sequential_steps",
         "monotonic_timing",
@@ -289,3 +289,33 @@ def test_step_numbers_require_integers(first_step):
     assert {check["name"] for check in evaluation["checks"] if not check["passed"]} == {
         "sequential_steps"
     }
+
+
+@pytest.mark.parametrize("fields", [{}, {"kind": None}, {"kind": []}, {"kind": "  "}])
+def test_invalid_kind_fails_trace_integrity(fields):
+    evaluation = evaluate_trace(
+        {
+            "reply": "Finished",
+            "iterations": 0,
+            "tool_calls": 0,
+            "trace": [{"step": 1, "elapsed_ms": 0, **fields}, event(2, "done", 1)],
+        }
+    )
+
+    assert evaluation["trace_integrity"] == "failed"
+    assert {check["name"] for check in evaluation["checks"] if not check["passed"]} == {
+        "event_kinds"
+    }
+
+
+def test_custom_event_kind_passes_trace_integrity():
+    evaluation = evaluate_trace(
+        {
+            "reply": "Finished",
+            "iterations": 0,
+            "tool_calls": 0,
+            "trace": [event(1, "checkpoint", 0), event(2, "done", 1)],
+        }
+    )
+
+    assert evaluation["trace_integrity"] == "passed"
